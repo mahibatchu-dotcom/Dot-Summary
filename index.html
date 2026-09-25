@@ -14,6 +14,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf_viewer.min.css">
 <style>
   :root {
     --bg: #EEF1F5; --panel: #FFFFFF; --ink: #1B2A41; --muted: #5B6B82;
@@ -178,9 +179,28 @@
   dialog#viewer { border: 0; padding: 0; width: 100vw; height: 100%; max-width: 100vw; max-height: 100%; margin: 0; background: var(--bg); color: var(--ink); }
   .v-bar { display: flex; align-items: center; gap: 8px; padding: calc(10px + env(safe-area-inset-top, 0px)) 14px 10px; border-bottom: 1px solid var(--line); background: var(--panel); flex-wrap: wrap; }
   .v-bar .v-title { font-weight: 800; flex: 1; min-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .v-bar input { width: 70px; text-align: center; padding: 6px; }
-  .v-body { overflow: auto; height: calc(100% - 64px); padding: 14px; text-align: center; }
-  .v-body canvas { max-width: 100%; height: auto; box-shadow: 0 1px 4px rgba(0,0,0,.2); background: #fff; }
+  .v-bar input { width: 64px; text-align: center; padding: 6px; }
+  dialog#viewer[open] { display: flex; flex-direction: column; }
+  .v-tools { display: flex; align-items: center; gap: 6px; padding: 8px 14px; border-bottom: 1px solid var(--line); background: var(--panel); overflow-x: auto; }
+  .v-hint { white-space: nowrap; }
+  .tool { font: inherit; font-size: .85rem; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); cursor: pointer; white-space: nowrap; }
+  .tool i { width: 14px; height: 14px; border-radius: 50%; display: inline-block; }
+  .tool[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+  .v-body { overflow: auto; flex: 1; padding: 14px 8px 40px; -webkit-overflow-scrolling: touch; }
+  .v-page { position: relative; margin: 0 auto 14px; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.25); }
+  .v-page canvas { display: block; width: 100%; height: 100%; }
+  .v-page .textLayer { z-index: 2; opacity: 1; line-height: 1; }
+  .v-page .textLayer ::selection { background: rgba(56, 103, 214, .35); }
+  .v-page .marks { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+  .v-page .mk { position: absolute; }
+  .v-page .mk.hl { mix-blend-mode: multiply; opacity: .55; border-radius: 2px; }
+  .v-page .mk.st::after { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 2px; margin-top: -1px; background: var(--c); }
+  .v-page .pno { position: absolute; bottom: -12px; right: 0; font-size: .7rem; color: var(--muted); }
+  dialog#viewer.erasing .textLayer { pointer-events: none; }
+  dialog#viewer.erasing .marks { z-index: 3; pointer-events: auto; }
+  dialog#viewer.erasing .mk { cursor: pointer; outline: 2px dashed var(--bad); }
+  dialog#newDlg { border: 1px solid var(--line); border-radius: 16px; background: var(--panel); color: var(--ink); padding: 20px; width: min(640px, calc(100vw - 24px)); max-height: calc(100% - 24px); overflow: auto; }
+  dialog#newDlg::backdrop { background: rgba(10, 18, 30, .45); }
 
   /* Calendar */
   dialog#calDlg { border: 1px solid var(--line); border-radius: 16px; background: var(--panel); color: var(--ink); padding: 18px; width: min(460px, calc(100vw - 24px)); max-height: calc(100% - 24px); overflow: auto; }
@@ -250,6 +270,7 @@
         <input id="dnQ" type="search" placeholder="Search summaries" aria-label="Search summaries">
         <button class="pill" id="dnRand" title="Open a random past summary">Revise one</button>
       </div>
+      <div style="padding:0 16px 12px"><button class="primary" id="dnNew" style="width:100%">+ Summarise an article</button></div>
       <div class="dn-count" id="dnCount">Loading…</div>
       <ul class="dn-list" id="dnList"></ul>
     </aside>
@@ -387,15 +408,51 @@
   </div>
 </main>
 
+<dialog id="newDlg" aria-label="Summarise an article">
+  <div class="cal-head"><h2 style="margin:0">Summarise an article</h2><button class="ghost" id="newClose" style="margin-left:auto">Close</button></div>
+  <div id="ghBox" hidden>
+    <p class="muted" style="margin-top:0">One-time setup: paste a GitHub access token so this site can ask GitHub to summarise articles. It's saved privately to your account.</p>
+    <div class="row"><label style="flex:1">GitHub token<input id="ghTok" type="password" autocomplete="off"></label><button class="primary" id="ghSave">Save token</button></div>
+    <hr style="border:0;border-top:1px solid var(--line);margin:16px 0">
+  </div>
+  <div id="newForm">
+    <div class="subtabs" style="margin-bottom:12px">
+      <button class="pill" data-nm="link" aria-selected="true">Paste a link</button>
+      <button class="pill" data-nm="date" aria-selected="false">Pick a date</button>
+    </div>
+    <label id="nmLink">Dot article link<input id="newUrl" type="url" placeholder="https://www.dot.news/post/..."></label>
+    <label id="nmDate" hidden>Date of the Dot story<input id="newDate" type="date"></label>
+    <div class="row" style="margin-top:12px"><button class="primary" id="newGo">Summarise</button><span class="muted" id="newMsg"></span></div>
+  </div>
+  <div id="newPreview" hidden>
+    <h3 id="pvTitle" style="font-family:var(--read);font-size:1.5rem;margin:8px 0"></h3>
+    <div class="body" id="pvBody" style="margin-top:8px"></div>
+    <div class="row" style="margin-top:14px">
+      <label>Save under date<input type="date" id="pvDate"></label>
+      <button class="primary" id="pvSave">Save summary</button>
+      <button class="ghost" id="pvDiscard">Discard</button>
+    </div>
+    <p class="muted" id="pvMsg"></p>
+  </div>
+</dialog>
+
 <dialog id="viewer" aria-label="Book viewer">
   <div class="v-bar">
     <button class="pill" id="vClose">Close</button>
     <span class="v-title" id="vTitle"></span>
-    <button class="pill" id="vPrev" aria-label="Previous page">‹</button>
-    <input type="number" id="vPage" min="1" aria-label="Page number"><span class="muted" id="vOf"></span>
-    <button class="pill" id="vNext" aria-label="Next page">›</button>
+    <span class="v-pg"><input type="number" id="vPage" min="1" aria-label="Page number"><span class="muted" id="vOf"></span></span>
+    <span class="v-zoom"><button class="pill" id="vOut" aria-label="Zoom out">−</button><button class="pill" id="vIn" aria-label="Zoom in">+</button></span>
   </div>
-  <div class="v-body" id="vBody"><p class="muted" id="vMsg"></p><canvas id="vCanvas"></canvas></div>
+  <div class="v-tools">
+    <span class="muted v-hint">Select text, then:</span>
+    <button class="tool" data-mark="hl" data-color="#FFE14D" title="Yellow highlight"><i style="background:#FFE14D"></i>Highlight</button>
+    <button class="tool" data-mark="hl" data-color="#8BE38B" title="Green highlight"><i style="background:#8BE38B"></i></button>
+    <button class="tool" data-mark="hl" data-color="#FF9EC7" title="Pink highlight"><i style="background:#FF9EC7"></i></button>
+    <button class="tool" data-mark="st" data-color="#D0342C" title="Strike through"><s>Strike</s></button>
+    <button class="tool" id="vErase" aria-pressed="false" title="Tap a mark to remove it">Eraser</button>
+    <span class="muted" id="vMsg"></span>
+  </div>
+  <div class="v-body" id="vBody"><div id="vPages"></div></div>
 </dialog>
 
 <dialog id="remDlg" aria-label="Set a reminder">
@@ -457,8 +514,8 @@ function show(view) {
   try { localStorage.setItem("hub.view", view); } catch (e) {}
 }
 document.querySelectorAll("#nav button").forEach(b => b.onclick = () => show(b.dataset.view));
-document.querySelectorAll(".subtabs button").forEach(b => b.onclick = () => {
-  document.querySelectorAll(".subtabs button").forEach(x => x.setAttribute("aria-selected", x === b));
+document.querySelectorAll(".subtabs button[data-sub]").forEach(b => b.onclick = () => {
+  document.querySelectorAll(".subtabs button[data-sub]").forEach(x => x.setAttribute("aria-selected", x === b));
   document.querySelectorAll("[data-subview]").forEach(s => s.hidden = s.dataset.subview !== b.dataset.sub);
 });
 
@@ -502,8 +559,13 @@ async function loadNotes() {
   const bust = "?t=" + Date.now();
   try {
     const idx = await fetch("summaries/index.json" + bust).then(r => { if (!r.ok) throw 0; return r.json(); });
-    const dates = [...new Set(Object.values(idx))].sort().reverse();
-    const res = await Promise.all(dates.map(d => fetch(`summaries/${d}.md${bust}`).then(r => r.ok ? r.text() : null).then(t => t && parseNote(t, d)).catch(() => null)));
+    const seen = new Set(), entries = [];
+    for (const v of Object.values(idx)) {
+      const e = typeof v === "string" ? { date: v, file: v + ".md" } : v;
+      if (e && e.file && !seen.has(e.file)) { seen.add(e.file); entries.push(e); }
+    }
+    entries.sort((a, b) => (b.date + b.file).localeCompare(a.date + a.file));
+    const res = await Promise.all(entries.map(e => fetch(`summaries/${e.file}${bust}`).then(r => r.ok ? r.text() : null).then(t => t && parseNote(t, e.date)).catch(() => null)));
     notes.push(...res.filter(Boolean));
   } catch (e) { $("dnCount").textContent = "Couldn't load summaries yet."; return; }
   renderNotes("");
@@ -538,6 +600,105 @@ function openNote(n) {
   renderNotes($("dnQ").value);
 }
 $("dnQ").oninput = e => renderNotes(e.target.value);
+
+/* ----- Summarise an article on demand (via the GitHub workflow) ----- */
+const GH_REPO = "mahibatchu-dotcom/Mahendra-Kumar-Hub";
+const b64encode = s => { const bytes = new TextEncoder().encode(s); let bin = ""; bytes.forEach(b => bin += String.fromCharCode(b)); return btoa(bin); };
+const b64decode = s => new TextDecoder().decode(Uint8Array.from(atob(s.replace(/\n/g, "")), c => c.charCodeAt(0)));
+async function gh(method, path, body) {
+  const r = await fetch("https://api.github.com/repos/" + GH_REPO + path, {
+    method, headers: { Authorization: "Bearer " + ghToken, Accept: "application/vnd.github+json", "Content-Type": "application/json" },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  if (r.status === 401) throw new Error("GitHub token isn't valid. Paste a new one.");
+  return r;
+}
+let nm = "link", pending = null, pollTimer = null;
+document.querySelectorAll("[data-nm]").forEach(b => b.onclick = () => {
+  nm = b.dataset.nm;
+  document.querySelectorAll("[data-nm]").forEach(x => x.setAttribute("aria-selected", x === b));
+  $("nmLink").hidden = nm !== "link"; $("nmDate").hidden = nm !== "date";
+});
+function resetNew() {
+  clearTimeout(pollTimer); pending = null;
+  $("newForm").hidden = false; $("newPreview").hidden = true;
+  $("newGo").disabled = false; $("newMsg").textContent = ""; $("pvMsg").textContent = "";
+}
+$("dnNew").onclick = () => { resetNew(); $("newDate").value = dstr(new Date()); $("newDate").max = dstr(new Date()); $("newDlg").showModal(); };
+$("newClose").onclick = () => { clearTimeout(pollTimer); $("newDlg").close(); };
+$("ghSave").onclick = () => { const t = $("ghTok").value.trim(); if (t) setDoc(privDoc(), { githubToken: t }, { merge: true }).then(() => $("ghTok").value = ""); };
+
+$("newGo").onclick = async () => {
+  if (!ghToken) { $("newMsg").textContent = "Save your GitHub token above first."; return; }
+  const url = $("newUrl").value.trim(), date = $("newDate").value;
+  if (nm === "link" && !/^https?:\/\/(www\.)?dot\.news\//.test(url)) { $("newMsg").textContent = "Paste a dot.news article link."; return; }
+  if (nm === "date" && !date) { $("newMsg").textContent = "Pick a date."; return; }
+  const requestId = "r" + Date.now();
+  $("newGo").disabled = true; $("newMsg").textContent = "Starting…";
+  try {
+    const r = await gh("POST", "/actions/workflows/daily-summary.yml/dispatches", {
+      ref: "main", inputs: { article_url: nm === "link" ? url : "", article_date: nm === "date" ? date : "", request_id: requestId }
+    });
+    if (r.status !== 204) throw new Error(r.status === 403 || r.status === 404 ? "GitHub refused. Check the token has Actions and Contents set to Read and write for this repository." : "GitHub error " + r.status);
+    const started = Date.now();
+    const poll = async () => {
+      const secs = Math.round((Date.now() - started) / 1000);
+      $("newMsg").textContent = `Reading and summarising… (${secs}s, usually 1–3 minutes)`;
+      try {
+        const f = await gh("GET", `/contents/summaries/pending/${requestId}.json?ref=main&t=${Date.now()}`);
+        if (f.ok) {
+          const meta = await f.json();
+          const data = JSON.parse(b64decode(meta.content));
+          if (data.error) { $("newMsg").textContent = data.error; $("newGo").disabled = false; await gh("DELETE", `/contents/summaries/pending/${requestId}.json`, { message: "Remove failed request", sha: meta.sha }); return; }
+          pending = { ...data, sha: meta.sha, requestId };
+          showPreview(); return;
+        }
+      } catch (e) { $("newMsg").textContent = e.message; $("newGo").disabled = false; return; }
+      if (secs > 480) { $("newMsg").textContent = "This is taking too long. Check the Actions tab on GitHub for errors."; $("newGo").disabled = false; return; }
+      pollTimer = setTimeout(poll, 8000);
+    };
+    pollTimer = setTimeout(poll, 20000);
+  } catch (e) { $("newMsg").textContent = e.message; $("newGo").disabled = false; }
+};
+function showPreview() {
+  $("newForm").hidden = true; $("newPreview").hidden = false;
+  $("pvTitle").textContent = pending.title;
+  $("pvBody").innerHTML = window.marked ? marked.parse(pending.summary) : pending.summary;
+  $("pvDate").value = pending.date;
+  $("pvMsg").textContent = pending.already_saved ? "You already have a summary with this title. Saving again adds a second copy." : "";
+}
+async function dropPending() {
+  if (!pending) return;
+  await gh("DELETE", `/contents/summaries/pending/${pending.requestId}.json`, { message: "Clear reviewed summary", sha: pending.sha }).catch(() => {});
+}
+$("pvDiscard").onclick = async () => { await dropPending(); resetNew(); };
+$("pvSave").onclick = async () => {
+  const date = $("pvDate").value || dstr(new Date());
+  const slug = pending.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 50) || "summary";
+  const file = `${date}-${slug}.md`;
+  const md = `# ${pending.title}\n*${date}* · [Original article](${pending.url})\n\n${pending.summary}\n`;
+  $("pvSave").disabled = true; $("pvMsg").textContent = "Saving…";
+  try {
+    let r = await gh("PUT", `/contents/summaries/${file}`, { message: "Add summary: " + pending.title, content: b64encode(md) });
+    if (!r.ok && r.status !== 422) throw new Error("Couldn't save the summary (GitHub " + r.status + ").");
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const cur = await gh("GET", `/contents/summaries/index.json?ref=main&t=${Date.now()}`);
+      let idx = {}, sha;
+      if (cur.ok) { const m = await cur.json(); sha = m.sha; idx = JSON.parse(b64decode(m.content)); }
+      let key = pending.title; if (idx[key]) key = `${pending.title} (${date})`;
+      idx[key] = { date, file };
+      r = await gh("PUT", "/contents/summaries/index.json", { message: "Index: " + pending.title, content: b64encode(JSON.stringify(idx, null, 2)), ...(sha ? { sha } : {}) });
+      if (r.ok) break;
+      if (r.status !== 409) throw new Error("Couldn't update the index (GitHub " + r.status + ").");
+    }
+    await dropPending();
+    const note = parseNote(md, date);
+    notes.push(note); notes.sort((a, b) => b.date.localeCompare(a.date));
+    renderNotes($("dnQ").value); openNote(note);
+    $("newDlg").close();
+  } catch (e) { $("pvMsg").textContent = e.message; }
+  $("pvSave").disabled = false;
+};
 $("dnRand").onclick = () => notes.length && openNote(notes[Math.floor(Math.random() * notes.length)]);
 loadNotes();
 
@@ -555,6 +716,7 @@ for (const sel of [$("logTopic"), $("bookTopic")]) {
 }
 $("logDate").value = new Date().toLocaleDateString("en-CA");
 
+let ghToken = "";
 let uid = null, cfa = { examDate: "", weeklyTarget: 15, progress: {} }, sessions = [], books = [], geminiKey = "";
 const cfaDoc = () => doc(fs, "users", uid, "meta", "cfa");
 const privDoc = () => doc(fs, "users", uid, "meta", "private");
@@ -565,7 +727,7 @@ function startCfa(u) {
   unsubs.push(onSnapshot(cfaDoc(), s => { cfa = { examDate: "", weeklyTarget: 15, progress: {}, ...(s.data() || {}) }; renderCfa(); }));
   unsubs.push(onSnapshot(query(collection(fs, "users", uid, "sessions"), orderBy("date", "desc"), limit(500)), q => { sessions = q.docs.map(d => ({ id: d.id, ...d.data() })); renderSessions(); }));
   unsubs.push(onSnapshot(query(collection(fs, "users", uid, "books"), orderBy("createdAt", "desc")), q => { books = q.docs.map(d => ({ id: d.id, ...d.data() })); renderBooks(); renderCfa(); }));
-  unsubs.push(onSnapshot(privDoc(), s => { geminiKey = (s.data() || {}).geminiKey || ""; $("keyBox").hidden = !!geminiKey; $("changeKey").hidden = !geminiKey; }));
+  unsubs.push(onSnapshot(privDoc(), s => { const d = s.data() || {}; geminiKey = d.geminiKey || ""; ghToken = d.githubToken || ""; $("keyBox").hidden = !!geminiKey; $("changeKey").hidden = !geminiKey; $("ghBox").hidden = !!ghToken; }));
 }
 
 function renderCfa() {
@@ -640,7 +802,7 @@ function renderBooks() {
     const div = document.createElement("div"); div.className = "book";
     div.innerHTML = `<div class="book-head"><div><a target="_blank" rel="noopener"></a> <span class="tag"></span></div>
       <span class="muted prog"></span></div><div class="bar-p"><i></i></div><div class="tree"></div>
-      <div class="row" style="margin-top:6px"><button class="ghost re">Re-read chapters</button><button class="ghost rm">Remove</button></div>`;
+      <div class="row" style="margin-top:6px"><button class="pill rd">Read book</button><button class="ghost re">Re-read chapters</button><button class="ghost rm">Remove</button></div>`;
     const a = div.querySelector("a"); a.href = b.url; a.textContent = b.name;
     div.querySelector(".tag").textContent = tName(b.topic);
     div.querySelector(".prog").textContent = keys.length ? `${nDone} of ${keys.length} chapters` : (b.status || "No chapter list yet");
@@ -668,6 +830,7 @@ function renderBooks() {
       tree.appendChild(det);
     });
     div.querySelector(".re").onclick = () => extractBook(b.id, b.url);
+    div.querySelector(".rd").onclick = () => openBook(b, 1, "");
     div.querySelector(".rm").onclick = () => confirm(`Remove "${b.name}" from this list? The file stays in your Drive.`) && deleteDoc(doc(fs, "users", uid, "books", b.id));
     box.appendChild(div);
   }
@@ -774,40 +937,173 @@ async function loadPdf(fileId, onMsg) {
   pdfCache[fileId] = pdf;
   return pdf;
 }
-let vPdf = null, vNum = 1, vRendering = null;
-async function renderPage(n) {
-  if (!vPdf) return;
-  vNum = Math.min(Math.max(1, n), vPdf.numPages);
-  $("vPage").value = vNum; $("vOf").textContent = "of " + vPdf.numPages;
-  const page = await vPdf.getPage(vNum);
-  const width = Math.min($("vBody").clientWidth - 28, 1100);
-  const base = page.getViewport({ scale: 1 });
-  const scale = width / base.width, ratio = window.devicePixelRatio || 1;
-  const vp = page.getViewport({ scale: scale * ratio });
-  const c = $("vCanvas"); c.width = vp.width; c.height = vp.height; c.style.width = (vp.width / ratio) + "px";
-  if (vRendering) { try { vRendering.cancel(); } catch (e) {} }
-  vRendering = page.render({ canvasContext: c.getContext("2d"), viewport: vp });
-  try { await vRendering.promise; } catch (e) {}
-  $("vBody").scrollTop = 0;
+/* Continuous-scroll viewer with highlights and strike-through */
+let vPdf = null, vBook = null, vZoom = 1, vPages = [], vObserver = null, vMarks = {}, vMarksUnsub = null, vBaseSize = null;
+
+function vFitWidth() { return Math.min($("vBody").clientWidth - 16, 1100); }
+function vPageWidth() { return Math.round(vFitWidth() * vZoom); }
+
+function vLayout() {
+  const w = vPageWidth();
+  for (const p of vPages) {
+    const r = p.ratio || vBaseSize.h / vBaseSize.w;
+    p.el.style.width = w + "px"; p.el.style.height = Math.round(w * r) + "px";
+    if (p.rendered) vUnrender(p);
+  }
 }
+function vUnrender(p) {
+  if (p.task) { try { p.task.cancel(); } catch (e) {} p.task = null; }
+  p.el.querySelector("canvas").width = 0;
+  p.el.querySelector(".textLayer").innerHTML = "";
+  p.rendered = false;
+}
+async function vRender(p) {
+  if (p.rendered || p.rendering) return;
+  p.rendering = true;
+  try {
+    const page = await vPdf.getPage(p.n);
+    const base = page.getViewport({ scale: 1 });
+    p.ratio = base.height / base.width;
+    const w = vPageWidth();
+    p.el.style.height = Math.round(w * p.ratio) + "px";
+    const scale = w / base.width, dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const vpCss = page.getViewport({ scale });
+    const vpPx = page.getViewport({ scale: scale * dpr });
+    const c = p.el.querySelector("canvas");
+    c.width = vpPx.width; c.height = vpPx.height;
+    p.task = page.render({ canvasContext: c.getContext("2d"), viewport: vpPx });
+    await p.task.promise;
+    p.task = null;
+    const tl = p.el.querySelector(".textLayer");
+    tl.innerHTML = "";
+    p.el.style.setProperty("--scale-factor", scale);
+    const lib = window["pdfjs-dist/build/pdf"];
+    const tlTask = lib.renderTextLayer({ textContentSource: page.streamTextContent(), container: tl, viewport: vpCss, textDivs: [] });
+    await tlTask.promise;
+    p.rendered = true;
+    vDrawMarks(p);
+  } catch (e) { /* cancelled or failed; will retry when visible again */ }
+  p.rendering = false;
+}
+function vDrawMarks(p) {
+  const layer = p.el.querySelector(".marks");
+  layer.innerHTML = "";
+  for (const m of vMarks[p.n] || []) {
+    for (const [x, y, w, hgt] of m.rects) {
+      const d = document.createElement("div");
+      d.className = "mk " + m.type;
+      d.style.left = x * 100 + "%"; d.style.top = y * 100 + "%"; d.style.width = w * 100 + "%"; d.style.height = hgt * 100 + "%";
+      if (m.type === "hl") d.style.background = m.color; else d.style.setProperty("--c", m.color);
+      d.title = "Tap with Eraser on to remove";
+      d.onclick = () => { if ($("viewer").classList.contains("erasing")) deleteDoc(doc(fs, "users", uid, "books", vBook.id, "marks", m.id)); };
+      layer.appendChild(d);
+    }
+  }
+}
+function vCurrentPage() {
+  const top = $("vBody").scrollTop + 80;
+  let cur = 1;
+  for (const p of vPages) { if (p.el.offsetTop <= top) cur = p.n; else break; }
+  return cur;
+}
+function vGoto(n) {
+  const p = vPages[Math.min(Math.max(1, n), vPages.length) - 1];
+  if (p) $("vBody").scrollTop = p.el.offsetTop - 8;
+}
+
 async function openBook(b, page, label) {
   const id = driveId(b.url);
+  vBook = b;
   $("vTitle").textContent = label ? `${b.name}: ${label}` : b.name;
-  $("vCanvas").width = 0; $("vMsg").textContent = "";
+  $("vPages").innerHTML = ""; vPages = []; vMarks = {};
+  $("vMsg").textContent = "";
+  $("viewer").classList.remove("erasing"); $("vErase").setAttribute("aria-pressed", "false");
   $("viewer").showModal();
   try {
     vPdf = await loadPdf(id, t => $("vMsg").textContent = t);
     $("vMsg").textContent = "";
-    await renderPage(page || 1);
+    const first = await vPdf.getPage(1);
+    const bv = first.getViewport({ scale: 1 });
+    vBaseSize = { w: bv.width, h: bv.height };
+    $("vOf").textContent = "of " + vPdf.numPages;
+    const frag = document.createDocumentFragment();
+    for (let n = 1; n <= vPdf.numPages; n++) {
+      const el = document.createElement("div");
+      el.className = "v-page"; el.dataset.n = n;
+      el.innerHTML = `<canvas></canvas><div class="marks"></div><div class="textLayer"></div><span class="pno">${n}</span>`;
+      frag.appendChild(el);
+      vPages.push({ n, el, rendered: false });
+    }
+    $("vPages").appendChild(frag);
+    vLayout();
+    if (vObserver) vObserver.disconnect();
+    vObserver = new IntersectionObserver(entries => {
+      for (const en of entries) {
+        const p = vPages[+en.target.dataset.n - 1];
+        if (en.isIntersecting) vRender(p); else if (p.rendered) vUnrender(p);
+      }
+    }, { root: $("vBody"), rootMargin: "1200px 0px" });
+    vPages.forEach(p => vObserver.observe(p.el));
+    if (vMarksUnsub) vMarksUnsub();
+    vMarksUnsub = onSnapshot(collection(fs, "users", uid, "books", b.id, "marks"), q => {
+      vMarks = {};
+      q.docs.forEach(d => { const m = { id: d.id, ...d.data() }; (vMarks[m.page] = vMarks[m.page] || []).push(m); });
+      vPages.filter(p => p.rendered).forEach(vDrawMarks);
+    });
+    requestAnimationFrame(() => vGoto(page || 1));
   } catch (e) {
     $("vMsg").textContent = e.code === "auth/popup-closed-by-user" ? "Permission window was closed. Close this and try again." : (e.message || "Couldn't open the book.");
   }
 }
+
+function vApplyMark(type, color) {
+  const sel = window.getSelection();
+  if (!sel || sel.isCollapsed || !sel.rangeCount) { $("vMsg").textContent = "Select some text first (on phone: long-press, then drag)."; return; }
+  const rects = [...sel.getRangeAt(0).getClientRects()].filter(r => r.width > 1 && r.height > 1);
+  const byPage = {};
+  for (const r of rects) {
+    const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    const p = vPages.find(pp => { const b = pp.el.getBoundingClientRect(); return cx >= b.left && cx <= b.right && cy >= b.top && cy <= b.bottom; });
+    if (!p) continue;
+    const b = p.el.getBoundingClientRect();
+    const nr = [(r.left - b.left) / b.width, (r.top - b.top) / b.height, r.width / b.width, r.height / b.height].map(v => Math.round(v * 10000) / 10000);
+    (byPage[p.n] = byPage[p.n] || []).push(nr);
+  }
+  const pages = Object.keys(byPage);
+  if (!pages.length) { $("vMsg").textContent = "Select text on the page itself."; return; }
+  for (const n of pages) addDoc(collection(fs, "users", uid, "books", vBook.id, "marks"), { page: +n, type, color, rects: byPage[n], createdAt: Date.now() }).catch(console.error);
+  sel.removeAllRanges();
+  $("vMsg").textContent = "";
+}
+document.querySelectorAll(".v-tools .tool[data-mark]").forEach(b => {
+  b.addEventListener("pointerdown", e => e.preventDefault());   // keep the text selection
+  b.onclick = () => vApplyMark(b.dataset.mark, b.dataset.color);
+});
+$("vErase").onclick = () => {
+  const on = !$("viewer").classList.contains("erasing");
+  $("viewer").classList.toggle("erasing", on);
+  $("vErase").setAttribute("aria-pressed", on);
+  $("vMsg").textContent = on ? "Tap a highlight or strike to remove it." : "";
+};
 $("vClose").onclick = () => $("viewer").close();
-$("vPrev").onclick = () => renderPage(vNum - 1);
-$("vNext").onclick = () => renderPage(vNum + 1);
-$("vPage").onchange = e => renderPage(parseInt(e.target.value) || 1);
-$("viewer").addEventListener("keydown", e => { if (e.key === "ArrowRight") renderPage(vNum + 1); if (e.key === "ArrowLeft") renderPage(vNum - 1); });
+$("viewer").addEventListener("close", () => {
+  if (vObserver) vObserver.disconnect();
+  if (vMarksUnsub) { vMarksUnsub(); vMarksUnsub = null; }
+  vPages.forEach(p => { if (p.task) try { p.task.cancel(); } catch (e) {} });
+  $("vPages").innerHTML = ""; vPages = [];
+});
+let vScrollT = null;
+$("vBody").addEventListener("scroll", () => { clearTimeout(vScrollT); vScrollT = setTimeout(() => { if (vPages.length) $("vPage").value = vCurrentPage(); }, 80); });
+$("vPage").onchange = e => vGoto(parseInt(e.target.value) || 1);
+function vSetZoom(z) {
+  const cur = vCurrentPage();
+  vZoom = Math.min(3, Math.max(0.5, z));
+  vLayout();
+  vGoto(cur);
+}
+$("vIn").onclick = () => vSetZoom(vZoom + 0.25);
+$("vOut").onclick = () => vSetZoom(vZoom - 0.25);
+window.addEventListener("resize", () => { if ($("viewer").open && vPages.length) { const cur = vCurrentPage(); vLayout(); vGoto(cur); } });
 
 /* ================= Medicines ================= */
 const DEFAULT_MEDS = [
@@ -1209,7 +1505,7 @@ $("chatForm").onsubmit = async e => {
 };
 $("chatText").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey && innerWidth > 800) { e.preventDefault(); $("chatForm").requestSubmit(); } });
 $("chatClear").onclick = () => { chatTurns = []; $("chat").innerHTML = ""; addMsg("ai", "New chat started. What would you like to know?"); };
-$("saveKey").onclick = () => { const k = $("gkey").value.trim(); if (k) setDoc(privDoc(), { geminiKey: k }).then(() => $("gkey").value = ""); };
+$("saveKey").onclick = () => { const k = $("gkey").value.trim(); if (k) setDoc(privDoc(), { geminiKey: k }, { merge: true }).then(() => $("gkey").value = ""); };
 $("changeKey").onclick = () => { $("keyBox").hidden = false; };
 </script>
 </body>
