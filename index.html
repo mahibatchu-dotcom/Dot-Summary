@@ -6,197 +6,470 @@
 <meta name="theme-color" content="#1B2A41">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Dot Notes">
-<title>Dot Notes</title>
+<meta name="apple-mobile-web-app-title" content="My Hub">
+<title>My Hub</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%231B2A41'/><circle cx='50' cy='50' r='18' fill='%23FFD84D'/></svg>">
-<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%231B2A41'/><circle cx='50' cy='50' r='18' fill='%23FFD84D'/></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
 <style>
   :root {
-    --bg: #EEF1F5;
-    --panel: #FFFFFF;
-    --ink: #1B2A41;
-    --muted: #5B6B82;
-    --line: #D6DDE7;
-    --mark: #FFD84D;
-    --mark-soft: #FFF3C2;
+    --bg: #EEF1F5; --panel: #FFFFFF; --ink: #1B2A41; --muted: #5B6B82;
+    --line: #D6DDE7; --mark: #FFD84D; --mark-soft: #FFF3C2; --bad: #B3261E;
     --ui: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
-    --read: "Source Serif 4", Georgia, "Times New Roman", serif;
+    --read: "Source Serif 4", Georgia, serif;
     box-sizing: border-box;
     padding-top: env(safe-area-inset-top, 0px);
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
   @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #111A27; --panel: #182335; --ink: #E6ECF4; --muted: #93A3B8;
-      --line: #2A3850; --mark: #FFD84D; --mark-soft: #3A3420;
-    }
+    :root { --bg: #111A27; --panel: #182335; --ink: #E6ECF4; --muted: #93A3B8; --line: #2A3850; --mark-soft: #3A3420; --bad: #F2867E; }
   }
   *, *::before, *::after { box-sizing: inherit; }
   html, body { height: 100%; margin: 0; }
-  body { background: var(--bg); color: var(--ink); font-family: var(--ui); }
+  body { background: var(--bg); color: var(--ink); font-family: var(--ui); display: flex; flex-direction: column; }
 
-  .app { display: grid; grid-template-columns: 340px 1fr; height: 100%; }
+  /* Top bar */
+  .bar { display: flex; align-items: center; gap: 14px; padding: 12px 18px; border-bottom: 1px solid var(--line); background: var(--bg); flex-wrap: wrap; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 1.1rem; margin-right: 8px; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--mark); box-shadow: 0 0 0 4px var(--ink); flex: none; }
+  nav.sections { display: flex; gap: 6px; overflow-x: auto; flex: 1; }
+  nav.sections button, .pill {
+    font: inherit; font-weight: 600; font-size: 0.9rem; padding: 8px 14px; border-radius: 999px;
+    border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; white-space: nowrap;
+  }
+  nav.sections button[aria-current="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .who { font-size: 0.82rem; color: var(--muted); display: flex; gap: 8px; align-items: center; }
+  .who button { font: inherit; font-size: 0.82rem; background: none; border: 0; color: var(--muted); text-decoration: underline; cursor: pointer; }
 
-  /* List of days */
-  .side { border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; background: var(--bg); }
-  .brand { display: flex; align-items: center; gap: 10px; padding: 22px 22px 14px; }
-  .brand .dot { width: 14px; height: 14px; border-radius: 50%; background: var(--mark); box-shadow: 0 0 0 4px var(--ink); }
-  .brand h1 { font-size: 1.25rem; font-weight: 800; margin: 0; letter-spacing: -0.01em; }
-  .tools { display: flex; gap: 8px; padding: 0 22px 14px; }
-  .tools input {
-    flex: 1; min-width: 0; font: inherit; font-size: 0.95rem; padding: 10px 12px;
-    border: 1px solid var(--line); border-radius: 10px; background: var(--panel); color: var(--ink);
-  }
-  .tools button, .back {
-    font: inherit; font-weight: 600; font-size: 0.9rem; padding: 10px 12px; border-radius: 10px;
-    border: 1px solid var(--ink); background: var(--ink); color: var(--bg); cursor: pointer; white-space: nowrap;
-  }
-  .count { padding: 0 22px 8px; font-size: 0.8rem; color: var(--muted); }
-  ul.list { list-style: none; margin: 0; padding: 0 12px 24px; overflow-y: auto; flex: 1; }
-  ul.list li button {
-    width: 100%; text-align: left; font: inherit; color: inherit; background: none; border: 0;
-    padding: 12px 10px; border-radius: 10px; cursor: pointer; display: block;
-  }
-  ul.list li button:hover { background: var(--panel); }
-  ul.list li button[aria-current="true"] { background: var(--panel); box-shadow: inset 4px 0 0 var(--mark); }
-  .when { font-size: 0.78rem; color: var(--muted); display: block; margin-bottom: 2px; }
-  .ttl { font-weight: 600; font-size: 0.98rem; line-height: 1.35; }
+  main { flex: 1; min-height: 0; overflow: auto; }
+  .view[hidden] { display: none !important; }
 
-  /* Reader */
-  .read { overflow-y: auto; min-height: 0; background: var(--panel); }
-  .page { max-width: 68ch; margin: 0 auto; padding: 48px 32px 80px; }
-  .page .date { color: var(--muted); font-size: 0.9rem; }
-  .page h2 {
-    font-family: var(--read); font-weight: 600; font-size: clamp(1.8rem, 3.5vw, 2.6rem);
-    line-height: 1.15; margin: 8px 0 12px; letter-spacing: -0.01em;
-  }
-  .page .src a { color: var(--muted); font-size: 0.9rem; }
-  .body { font-family: var(--read); font-size: 1.12rem; line-height: 1.7; margin-top: 28px; }
-  .body p { margin: 0 0 1.1em; }
-  .body ul { padding-left: 1.2em; margin: 0 0 1.3em; }
-  .body li { margin-bottom: 0.45em; }
-  .body strong {
-    font-family: var(--ui); font-weight: 800; font-size: 0.92em;
-    background: linear-gradient(transparent 55%, var(--mark-soft) 55%);
-  }
-  .back { display: none; margin-bottom: 20px; background: transparent; color: var(--ink); }
-  .empty { color: var(--muted); padding: 60px 32px; max-width: 50ch; margin: 0 auto; line-height: 1.6; }
-
+  /* Shared bits */
+  .wrap { max-width: 980px; margin: 0 auto; padding: 20px 18px 60px; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 20px; margin-bottom: 16px; }
+  h2 { font-size: 1rem; font-weight: 800; margin: 0 0 12px; }
+  .muted { color: var(--muted); font-size: 0.88rem; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: end; }
+  label { display: flex; flex-direction: column; gap: 4px; font-size: 0.82rem; font-weight: 600; color: var(--muted); }
+  input, select, textarea { font: inherit; font-size: 0.95rem; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 9px 10px; min-width: 0; }
+  textarea { width: 100%; min-height: 90px; resize: vertical; }
+  .primary { font: inherit; font-weight: 700; font-size: 0.92rem; padding: 10px 16px; border-radius: 10px; border: 0; background: var(--ink); color: var(--bg); cursor: pointer; }
+  .primary:disabled { opacity: .5; cursor: default; }
+  .ghost { font: inherit; font-size: 0.85rem; background: none; border: 0; color: var(--muted); cursor: pointer; text-decoration: underline; padding: 4px; }
+  .bar-p { height: 10px; border-radius: 999px; background: var(--bg); overflow: hidden; margin-top: 8px; }
+  .bar-p i { display: block; height: 100%; background: var(--ink); border-radius: 999px; }
+  .big { font-size: 1.6rem; font-weight: 800; }
+  ul.plain { list-style: none; margin: 0; padding: 0; }
+  ul.plain li { display: flex; justify-content: space-between; gap: 10px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); }
+  ul.plain li:first-child { border-top: 0; }
+  ul.plain a { color: var(--ink); font-weight: 600; }
+  .tag { font-size: 0.75rem; background: var(--mark-soft); padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
   :focus-visible { outline: 3px solid var(--mark); outline-offset: 2px; }
 
-  /* Phone: one screen at a time */
+  /* Sign in */
+  .signin { max-width: 420px; margin: 12vh auto; text-align: center; padding: 0 20px; }
+  .signin h1 { font-family: var(--read); font-weight: 600; font-size: 2.4rem; margin: 0 0 10px; }
+
+  /* Dot Notes */
+  .dn { display: grid; grid-template-columns: 330px 1fr; height: 100%; }
+  .dn-side { border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
+  .dn-tools { display: flex; gap: 8px; padding: 16px; }
+  .dn-tools input { flex: 1; }
+  .dn-count { padding: 0 18px 8px; font-size: 0.8rem; color: var(--muted); }
+  ul.dn-list { list-style: none; margin: 0; padding: 0 10px 24px; overflow-y: auto; flex: 1; }
+  ul.dn-list button { width: 100%; text-align: left; font: inherit; color: inherit; background: none; border: 0; padding: 12px 10px; border-radius: 10px; cursor: pointer; display: block; }
+  ul.dn-list button:hover { background: var(--panel); }
+  ul.dn-list button[aria-current="true"] { background: var(--panel); box-shadow: inset 4px 0 0 var(--mark); }
+  .when { font-size: 0.78rem; color: var(--muted); display: block; margin-bottom: 2px; }
+  .ttl { font-weight: 600; font-size: 0.97rem; line-height: 1.35; }
+  .dn-read { overflow-y: auto; min-height: 0; background: var(--panel); }
+  .page { max-width: 68ch; margin: 0 auto; padding: 40px 28px 80px; }
+  .page h3 { font-family: var(--read); font-weight: 600; font-size: clamp(1.7rem, 3.4vw, 2.5rem); line-height: 1.15; margin: 8px 0 12px; }
+  .page .src a { color: var(--muted); font-size: 0.9rem; }
+  .body { font-family: var(--read); font-size: 1.1rem; line-height: 1.7; margin-top: 24px; }
+  .body ul { padding-left: 1.2em; }
+  .body li { margin-bottom: .45em; }
+  .body strong { font-family: var(--ui); font-weight: 800; font-size: .92em; background: linear-gradient(transparent 55%, var(--mark-soft) 55%); }
+  .back { display: none; margin-bottom: 16px; }
+
+  /* CFA */
+  .count { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+  .count .days { font-family: var(--read); font-weight: 600; font-size: clamp(3.4rem, 11vw, 5.6rem); line-height: 1; letter-spacing: -0.03em; }
+  .count .days span { background: linear-gradient(transparent 62%, var(--mark) 62%); padding: 0 4px; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+  .subtabs { display: flex; gap: 6px; margin-bottom: 16px; overflow-x: auto; }
+  .subtabs button[aria-selected="true"] { background: var(--mark); border-color: var(--mark); color: #1B2A41; }
+  .topic { display: grid; grid-template-columns: 1fr auto; gap: 6px 14px; padding: 14px 0; border-top: 1px solid var(--line); }
+  .topic:first-child { border-top: 0; }
+  .topic .name { font-weight: 700; }
+  .topic .w { font-size: .8rem; color: var(--muted); }
+  .topic .bar-p { grid-column: 1 / -1; margin-top: 0; }
+  .step { display: flex; align-items: center; gap: 6px; font-size: .9rem; }
+  .step button { width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font: inherit; font-weight: 800; cursor: pointer; }
+  .step input { width: 52px; text-align: center; padding: 5px; }
+  .answer { font-family: var(--read); font-size: 1.05rem; line-height: 1.65; white-space: pre-wrap; margin-top: 14px; }
+
   @media (max-width: 800px) {
-    .app { display: block; }
-    .side { height: 100%; border: 0; }
-    .read { display: none; height: 100%; }
-    .app.reading .side { display: none; }
-    .app.reading .read { display: block; }
+    .dn { display: block; height: 100%; }
+    .dn-side { height: 100%; border: 0; }
+    .dn-read { display: none; height: 100%; }
+    .dn.reading .dn-side { display: none; }
+    .dn.reading .dn-read { display: block; }
     .back { display: inline-block; }
     .page { padding: 20px 20px 60px; }
+    .who span { display: none; }
   }
 </style>
 </head>
 <body>
-<div class="app" id="app">
-  <aside class="side">
-    <div class="brand"><span class="dot" aria-hidden="true"></span><h1>Dot Notes</h1></div>
-    <div class="tools">
-      <input id="q" type="search" placeholder="Search summaries" aria-label="Search summaries">
-      <button id="rand" title="Open a random past summary">Revise one</button>
-    </div>
-    <div class="count" id="count">Loading…</div>
-    <ul class="list" id="list"></ul>
-  </aside>
-  <main class="read" id="read">
-    <div class="empty" id="placeholder">Pick a day on the left to read its summary.</div>
-  </main>
+
+<div class="bar">
+  <div class="brand"><span class="dot" aria-hidden="true"></span>My Hub</div>
+  <nav class="sections" id="nav" hidden>
+    <button data-view="dot" aria-current="true">Dot Notes</button>
+    <button data-view="cfa" aria-current="false">CFA</button>
+  </nav>
+  <div class="who" id="who" hidden><span id="whoName"></span><button id="signOut">Sign out</button></div>
 </div>
 
-<script>
-const items = [];          // {date, title, url, body, text}
-let current = null;
+<main>
+  <!-- SIGN IN -->
+  <div class="view signin" id="v-signin">
+    <h1>My Hub</h1>
+    <p class="muted">Your daily notes, study and routines in one place.</p>
+    <button class="primary" id="signIn">Sign in with Google</button>
+    <p class="muted" id="signMsg"></p>
+  </div>
 
+  <!-- DOT NOTES -->
+  <div class="view dn" id="v-dot" hidden>
+    <aside class="dn-side">
+      <div class="dn-tools">
+        <input id="dnQ" type="search" placeholder="Search summaries" aria-label="Search summaries">
+        <button class="pill" id="dnRand" title="Open a random past summary">Revise one</button>
+      </div>
+      <div class="dn-count" id="dnCount">Loading…</div>
+      <ul class="dn-list" id="dnList"></ul>
+    </aside>
+    <section class="dn-read" id="dnRead"><div class="page muted">Pick a day to read its summary.</div></section>
+  </div>
+
+  <!-- CFA -->
+  <div class="view" id="v-cfa" hidden>
+    <div class="wrap">
+      <div class="subtabs">
+        <button class="pill" data-sub="today" aria-selected="true">Today</button>
+        <button class="pill" data-sub="topics" aria-selected="false">Topics</button>
+        <button class="pill" data-sub="books" aria-selected="false">Books</button>
+        <button class="pill" data-sub="ask" aria-selected="false">Ask a doubt</button>
+      </div>
+
+      <section data-subview="today">
+        <div class="panel">
+          <div class="count"><div class="days"><span id="days">–</span></div><div style="font-weight:600" id="daysLbl">days to go</div></div>
+          <div class="row" style="margin-top:14px"><label>Exam date<input type="date" id="examDate"></label><span class="muted" id="dateHint"></span></div>
+        </div>
+        <div class="stats">
+          <div class="panel"><h2>Syllabus covered</h2><div class="big" id="ovPct">0%</div><div class="bar-p"><i id="ovBar" style="width:0"></i></div><div class="muted" id="ovTxt" style="margin-top:8px"></div></div>
+          <div class="panel"><h2>Study hours this week</h2>
+            <div class="big"><span id="wkHrs">0</span> <span class="muted">of</span> <input type="number" id="target" min="1" max="80" style="width:70px"> <span class="muted">hrs</span></div>
+            <div class="bar-p"><i id="wkBar" style="width:0"></i></div><div class="muted" id="allHrs" style="margin-top:8px"></div></div>
+        </div>
+        <div class="panel">
+          <h2>Log a study session</h2>
+          <form class="row" id="logForm">
+            <label>Date<input type="date" id="logDate" required></label>
+            <label>Hours<input type="number" id="logHrs" min="0.25" max="16" step="0.25" value="1" required style="width:90px"></label>
+            <label>Topic<select id="logTopic"></select></label>
+            <label style="flex:1;min-width:160px">What you covered<input id="logNote" placeholder="e.g. Time value of money, practice Qs"></label>
+            <button class="primary" type="submit">Log session</button>
+          </form>
+          <ul class="plain" id="sessions" style="margin-top:14px"></ul>
+        </div>
+      </section>
+
+      <section data-subview="topics" hidden>
+        <div class="panel">
+          <h2>Progress by topic</h2>
+          <p class="muted" style="margin-top:0">Set how many readings each topic has in your Schweser books, then tap + each time you finish one.</p>
+          <div id="topicList"></div>
+        </div>
+      </section>
+
+      <section data-subview="books" hidden>
+        <div class="panel">
+          <h2>Add a book from Google Drive</h2>
+          <p class="muted" style="margin-top:0">In Google Drive, open the book's ⋮ menu → Share → Copy link, then paste it here. Keep the Drive file private: only you can open it.</p>
+          <form class="row" id="bookForm">
+            <label style="flex:1;min-width:160px">Book name<input id="bookName" required placeholder="e.g. Schweser Book 1: Quant"></label>
+            <label>Topic<select id="bookTopic"></select></label>
+            <label style="flex:2;min-width:200px">Drive link<input id="bookUrl" type="url" required placeholder="https://drive.google.com/..."></label>
+            <button class="primary" type="submit">Add book</button>
+          </form>
+        </div>
+        <div class="panel"><h2>Your books</h2><ul class="plain" id="bookList"></ul></div>
+      </section>
+
+      <section data-subview="ask" hidden>
+        <div class="panel">
+          <h2>Ask a CFA doubt</h2>
+          <div id="keyBox" class="row" style="margin-bottom:12px" hidden>
+            <label style="flex:1;min-width:200px">Your Gemini API key (saved privately to your account, once)<input id="gkey" type="password" autocomplete="off"></label>
+            <button class="primary" id="saveKey">Save key</button>
+          </div>
+          <textarea id="question" placeholder="e.g. Explain duration vs convexity with a simple example"></textarea>
+          <div class="row" style="margin-top:10px"><button class="primary" id="askBtn">Get explanation</button><span class="muted" id="askStatus"></span><button class="ghost" id="changeKey" hidden>Change API key</button></div>
+          <div class="answer" id="answer"></div>
+        </div>
+      </section>
+    </div>
+  </div>
+</main>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, doc, collection, setDoc, addDoc, deleteDoc, onSnapshot, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyA_y9S85hCgrLf8lfRUaJDyvOstwboq9AQ",
+  authDomain: "my-hub-876ad.firebaseapp.com",
+  projectId: "my-hub-876ad",
+  storageBucket: "my-hub-876ad.firebasestorage.app",
+  messagingSenderId: "1014657366536",
+  appId: "1:1014657366536:web:8a8c0f4ed0bdc6e1c02fbd"
+};
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const fs = getFirestore(app);
+const $ = id => document.getElementById(id);
+
+/* ================= Navigation ================= */
+function show(view) {
+  document.querySelectorAll(".view").forEach(v => v.hidden = v.id !== "v-" + view);
+  document.querySelectorAll("#nav button").forEach(b => b.setAttribute("aria-current", b.dataset.view === view));
+  try { localStorage.setItem("hub.view", view); } catch (e) {}
+}
+document.querySelectorAll("#nav button").forEach(b => b.onclick = () => show(b.dataset.view));
+document.querySelectorAll(".subtabs button").forEach(b => b.onclick = () => {
+  document.querySelectorAll(".subtabs button").forEach(x => x.setAttribute("aria-selected", x === b));
+  document.querySelectorAll("[data-subview]").forEach(s => s.hidden = s.dataset.subview !== b.dataset.sub);
+});
+
+/* ================= Auth ================= */
+$("signIn").onclick = async () => {
+  $("signMsg").textContent = "";
+  try { await signInWithPopup(auth, new GoogleAuthProvider()); }
+  catch (e) { $("signMsg").textContent = e.code === "auth/unauthorized-domain" ? "This website isn't allowed to sign in yet. Add it under Firebase → Authentication → Settings → Authorized domains." : "Sign-in didn't finish. Try again."; }
+};
+$("signOut").onclick = () => signOut(auth);
+
+let unsubs = [];
+onAuthStateChanged(auth, user => {
+  unsubs.forEach(u => u()); unsubs = [];
+  if (!user) {
+    $("nav").hidden = true; $("who").hidden = true;
+    document.querySelectorAll(".view").forEach(v => v.hidden = v.id !== "v-signin");
+    return;
+  }
+  $("nav").hidden = false; $("who").hidden = false;
+  $("whoName").textContent = user.displayName || user.email;
+  let last = "dot"; try { last = localStorage.getItem("hub.view") || "dot"; } catch (e) {}
+  show(last);
+  startCfa(user.uid);
+});
+
+/* ================= Dot Notes ================= */
+const notes = []; let curNote = null;
 const fmt = d => new Date(d + "T00:00:00").toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
-
-function parse(md, date) {
+function parseNote(md, date) {
   const lines = md.split("\n");
   const title = (lines[0] || "").replace(/^#\s*/, "").trim();
   const link = (lines[1] || "").match(/\((https?:[^)]+)\)/);
   const body = lines.slice(2).join("\n").trim();
   return { date, title, url: link ? link[1] : "", body, text: (title + " " + body).toLowerCase() };
 }
-
-async function load() {
+async function loadNotes() {
   const bust = "?t=" + Date.now();
   try {
     const idx = await fetch("summaries/index.json" + bust).then(r => { if (!r.ok) throw 0; return r.json(); });
     const dates = [...new Set(Object.values(idx))].sort().reverse();
-    const results = await Promise.all(dates.map(d =>
-      fetch(`summaries/${d}.md${bust}`).then(r => r.ok ? r.text() : null).then(t => t && parse(t, d)).catch(() => null)
-    ));
-    items.push(...results.filter(Boolean));
-  } catch (e) {
-    document.getElementById("count").textContent = "Couldn't load summaries. Check that the summaries folder exists in the repository.";
-    return;
-  }
-  render("");
-  if (items.length && window.innerWidth > 800) open(items[0]);
+    const res = await Promise.all(dates.map(d => fetch(`summaries/${d}.md${bust}`).then(r => r.ok ? r.text() : null).then(t => t && parseNote(t, d)).catch(() => null)));
+    notes.push(...res.filter(Boolean));
+  } catch (e) { $("dnCount").textContent = "Couldn't load summaries yet."; return; }
+  renderNotes("");
+  if (notes.length && innerWidth > 800) openNote(notes[0]);
 }
-
-function render(query) {
-  const list = document.getElementById("list");
-  const q = query.trim().toLowerCase();
-  const shown = q ? items.filter(i => i.text.includes(q)) : items;
-  document.getElementById("count").textContent =
-    shown.length ? `${shown.length} ${shown.length === 1 ? "summary" : "summaries"}` : (q ? "No summaries match that search." : "No summaries yet. The first one arrives at 8:00 AM.");
-  list.innerHTML = "";
-  for (const it of shown) {
-    const li = document.createElement("li");
-    const b = document.createElement("button");
+function renderNotes(q) {
+  q = q.trim().toLowerCase();
+  const shown = q ? notes.filter(n => n.text.includes(q)) : notes;
+  $("dnCount").textContent = shown.length ? `${shown.length} ${shown.length === 1 ? "summary" : "summaries"}` : (q ? "No summaries match that search." : "No summaries yet. The first one arrives at 8:00 AM.");
+  const ul = $("dnList"); ul.innerHTML = "";
+  for (const n of shown) {
+    const li = document.createElement("li"), b = document.createElement("button");
     b.innerHTML = `<span class="when"></span><span class="ttl"></span>`;
-    b.querySelector(".when").textContent = fmt(it.date);
-    b.querySelector(".ttl").textContent = it.title;
-    b.setAttribute("aria-current", current === it ? "true" : "false");
-    b.onclick = () => open(it);
-    li.appendChild(b);
-    list.appendChild(li);
+    b.querySelector(".when").textContent = fmt(n.date);
+    b.querySelector(".ttl").textContent = n.title;
+    b.setAttribute("aria-current", curNote === n);
+    b.onclick = () => openNote(n);
+    li.appendChild(b); ul.appendChild(li);
+  }
+}
+function openNote(n) {
+  curNote = n;
+  const page = document.createElement("article"); page.className = "page";
+  page.innerHTML = `<button class="pill back">Back to all days</button><div class="muted"></div><h3></h3><div class="src"></div><div class="body"></div>`;
+  page.querySelector(".muted").textContent = fmt(n.date);
+  page.querySelector("h3").textContent = n.title;
+  if (n.url) { const a = document.createElement("a"); a.href = n.url; a.target = "_blank"; a.rel = "noopener"; a.textContent = "Read the original on Dot"; page.querySelector(".src").appendChild(a); }
+  page.querySelector(".body").innerHTML = window.marked ? marked.parse(n.body) : n.body;
+  page.querySelector(".back").onclick = () => $("v-dot").classList.remove("reading");
+  $("dnRead").innerHTML = ""; $("dnRead").appendChild(page); $("dnRead").scrollTop = 0;
+  $("v-dot").classList.add("reading");
+  renderNotes($("dnQ").value);
+}
+$("dnQ").oninput = e => renderNotes(e.target.value);
+$("dnRand").onclick = () => notes.length && openNote(notes[Math.floor(Math.random() * notes.length)]);
+loadNotes();
+
+/* ================= CFA ================= */
+const TOPICS = [
+  ["ethics", "Ethical and Professional Standards", "15–20%"], ["quant", "Quantitative Methods", "6–9%"],
+  ["econ", "Economics", "6–9%"], ["fsa", "Financial Statement Analysis", "11–14%"],
+  ["corp", "Corporate Issuers", "6–9%"], ["equity", "Equity Investments", "11–14%"],
+  ["fi", "Fixed Income", "11–14%"], ["deriv", "Derivatives", "5–8%"],
+  ["alts", "Alternative Investments", "7–10%"], ["pm", "Portfolio Management", "8–12%"],
+];
+const tName = k => k === "mock" ? "Mock / revision" : k === "other" ? "Other" : (TOPICS.find(t => t[0] === k) || [k, k])[1];
+for (const sel of [$("logTopic"), $("bookTopic")]) {
+  sel.innerHTML = TOPICS.map(([k, n]) => `<option value="${k}">${n}</option>`).join("") + (sel.id === "logTopic" ? `<option value="mock">Mock exam / revision</option>` : `<option value="other">Other</option>`);
+}
+$("logDate").value = new Date().toLocaleDateString("en-CA");
+
+let uid = null, cfa = { examDate: "", weeklyTarget: 15, progress: {} }, sessions = [], books = [], geminiKey = "";
+const cfaDoc = () => doc(fs, "users", uid, "meta", "cfa");
+const privDoc = () => doc(fs, "users", uid, "meta", "private");
+const saveCfa = () => setDoc(cfaDoc(), cfa).catch(console.error);
+
+function startCfa(u) {
+  uid = u;
+  unsubs.push(onSnapshot(cfaDoc(), s => { cfa = { examDate: "", weeklyTarget: 15, progress: {}, ...(s.data() || {}) }; renderCfa(); }));
+  unsubs.push(onSnapshot(query(collection(fs, "users", uid, "sessions"), orderBy("date", "desc"), limit(500)), q => { sessions = q.docs.map(d => ({ id: d.id, ...d.data() })); renderSessions(); }));
+  unsubs.push(onSnapshot(query(collection(fs, "users", uid, "books"), orderBy("createdAt", "desc")), q => { books = q.docs.map(d => ({ id: d.id, ...d.data() })); renderBooks(); }));
+  unsubs.push(onSnapshot(privDoc(), s => { geminiKey = (s.data() || {}).geminiKey || ""; $("keyBox").hidden = !!geminiKey; $("changeKey").hidden = !geminiKey; }));
+}
+
+function renderCfa() {
+  $("examDate").value = cfa.examDate || "";
+  const target = new Date((cfa.examDate || "2027-02-01") + "T00:00:00");
+  $("days").textContent = Math.max(0, Math.ceil((target - new Date()) / 86400000));
+  $("daysLbl").textContent = cfa.examDate ? "days to your exam" : "days to the February 2027 window";
+  $("dateHint").textContent = cfa.examDate ? "" : "Set the exact date once CFA Institute confirms it.";
+
+  let done = 0, total = 0;
+  $("topicList").innerHTML = "";
+  for (const [k, name, w] of TOPICS) {
+    const p = cfa.progress[k] || { done: 0, total: 0 };
+    done += p.done; total += p.total;
+    const pct = p.total ? Math.round(p.done / p.total * 100) : 0;
+    const row = document.createElement("div"); row.className = "topic";
+    row.innerHTML = `<div><div class="name"></div><div class="w">Weight ${w}</div></div>
+      <div class="step"><button aria-label="One fewer reading done">−</button><span><b>${p.done}</b> of</span>
+      <input type="number" min="0" max="40" value="${p.total}" aria-label="Total readings"><button aria-label="One more reading done">+</button></div>
+      <div class="bar-p"><i style="width:${pct}%"></i></div>`;
+    row.querySelector(".name").textContent = name;
+    const [minus, plus] = row.querySelectorAll("button"), tin = row.querySelector("input");
+    const put = (d, t) => { cfa.progress = { ...cfa.progress, [k]: { done: d, total: t } }; renderCfa(); saveCfa(); };
+    minus.onclick = () => put(Math.max(0, p.done - 1), p.total);
+    plus.onclick = () => put(p.done + 1, Math.max(p.total, p.done + 1));
+    tin.onchange = () => { const t = Math.max(0, parseInt(tin.value) || 0); put(Math.min(p.done, t), t); };
+    $("topicList").appendChild(row);
+  }
+  const pct = total ? Math.round(done / total * 100) : 0;
+  $("ovPct").textContent = pct + "%"; $("ovBar").style.width = pct + "%";
+  $("ovTxt").textContent = total ? `${done} of ${total} readings done` : "Set reading counts in the Topics tab.";
+  renderSessions();
+}
+
+function renderSessions() {
+  const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  const ws = d.toLocaleDateString("en-CA");
+  const wk = sessions.filter(s => s.date >= ws).reduce((a, s) => a + (s.hours || 0), 0);
+  const all = sessions.reduce((a, s) => a + (s.hours || 0), 0);
+  const tgt = cfa.weeklyTarget || 15;
+  $("target").value = tgt; $("wkHrs").textContent = +wk.toFixed(2);
+  $("wkBar").style.width = Math.min(100, wk / tgt * 100) + "%";
+  $("allHrs").textContent = `${+all.toFixed(2)} hours studied in total`;
+  const ul = $("sessions"); ul.innerHTML = "";
+  if (!sessions.length) { ul.innerHTML = `<li class="muted">No sessions yet. Log your first one above.</li>`; return; }
+  for (const s of sessions.slice(0, 8)) {
+    const li = document.createElement("li");
+    li.innerHTML = `<div><div><b></b> <span class="muted"></span></div><div class="muted note"></div></div><button class="ghost">Remove</button>`;
+    li.querySelector("b").textContent = `${s.hours} h · ${tName(s.topic)}`;
+    li.querySelector("span").textContent = new Date(s.date + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+    li.querySelector(".note").textContent = s.note || "";
+    li.querySelector("button").onclick = () => deleteDoc(doc(fs, "users", uid, "sessions", s.id));
+    ul.appendChild(li);
   }
 }
 
-function open(it) {
-  current = it;
-  const read = document.getElementById("read");
-  read.innerHTML = "";
-  const page = document.createElement("article");
-  page.className = "page";
-  page.innerHTML = `
-    <button class="back" id="back">Back to all days</button>
-    <div class="date"></div>
-    <h2></h2>
-    <div class="src"></div>
-    <div class="body"></div>`;
-  page.querySelector(".date").textContent = fmt(it.date);
-  page.querySelector("h2").textContent = it.title;
-  if (it.url) {
-    const a = document.createElement("a");
-    a.href = it.url; a.target = "_blank"; a.rel = "noopener"; a.textContent = "Read the original on Dot";
-    page.querySelector(".src").appendChild(a);
+function renderBooks() {
+  const ul = $("bookList"); ul.innerHTML = "";
+  if (!books.length) { ul.innerHTML = `<li class="muted">No books yet. Add your first Drive link above.</li>`; return; }
+  const order = Object.fromEntries(TOPICS.map((t, i) => [t[0], i]));
+  for (const b of [...books].sort((a, c) => (order[a.topic] ?? 99) - (order[c.topic] ?? 99))) {
+    const li = document.createElement("li");
+    li.innerHTML = `<div><a target="_blank" rel="noopener"></a> <span class="tag"></span></div><button class="ghost">Remove</button>`;
+    const a = li.querySelector("a"); a.href = b.url; a.textContent = b.name;
+    li.querySelector(".tag").textContent = tName(b.topic);
+    li.querySelector("button").onclick = () => confirm(`Remove "${b.name}" from this list? The file stays in your Drive.`) && deleteDoc(doc(fs, "users", uid, "books", b.id));
+    ul.appendChild(li);
   }
-  page.querySelector(".body").innerHTML = window.marked ? marked.parse(it.body) : it.body.replace(/</g, "&lt;").replace(/\n/g, "<br>");
-  read.appendChild(page);
-  read.scrollTop = 0;
-  page.querySelector("#back").onclick = () => document.getElementById("app").classList.remove("reading");
-  document.getElementById("app").classList.add("reading");
-  render(document.getElementById("q").value);
 }
 
-document.getElementById("q").addEventListener("input", e => render(e.target.value));
-document.getElementById("rand").onclick = () => { if (items.length) open(items[Math.floor(Math.random() * items.length)]); };
-load();
+$("examDate").onchange = e => { cfa.examDate = e.target.value; renderCfa(); saveCfa(); };
+$("target").onchange = e => { cfa.weeklyTarget = Math.max(1, parseFloat(e.target.value) || 15); renderSessions(); saveCfa(); };
+$("logForm").onsubmit = e => {
+  e.preventDefault();
+  const s = { date: $("logDate").value, hours: parseFloat($("logHrs").value) || 0, topic: $("logTopic").value, note: $("logNote").value.trim(), createdAt: Date.now() };
+  if (!s.hours) return;
+  $("logNote").value = "";
+  addDoc(collection(fs, "users", uid, "sessions"), s).catch(console.error);
+};
+$("bookForm").onsubmit = e => {
+  e.preventDefault();
+  const url = $("bookUrl").value.trim();
+  if (!/^https:\/\/(drive|docs)\.google\.com\//.test(url)) { alert("Paste a Google Drive link (it starts with https://drive.google.com)."); return; }
+  addDoc(collection(fs, "users", uid, "books"), { name: $("bookName").value.trim(), topic: $("bookTopic").value, url, createdAt: Date.now() }).catch(console.error);
+  $("bookName").value = ""; $("bookUrl").value = "";
+};
+
+/* Ask a doubt (Gemini) */
+$("saveKey").onclick = () => { const k = $("gkey").value.trim(); if (k) setDoc(privDoc(), { geminiKey: k }).then(() => $("gkey").value = ""); };
+$("changeKey").onclick = () => { $("keyBox").hidden = false; };
+$("askBtn").onclick = async () => {
+  const q = $("question").value.trim(); if (!q) return;
+  if (!geminiKey) { $("askStatus").textContent = "Save your Gemini API key first."; $("keyBox").hidden = false; return; }
+  $("askBtn").disabled = true; $("askStatus").textContent = "Thinking…"; $("answer").textContent = "";
+  const prompt = "You are a patient CFA Level I tutor. Explain the student's question in plain English, with one short worked example or numbers where useful, and end with one line on how it's typically tested. Keep it under 250 words. Plain text only, no markdown symbols.\n\nQuestion: " + q;
+  let ok = false;
+  for (const model of ["gemini-3.5-flash", "gemini-3.5-flash-lite"]) {
+    try {
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+        method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": geminiKey },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+      });
+      if (!r.ok) continue;
+      const data = await r.json();
+      $("answer").textContent = (data.candidates?.[0]?.content?.parts || []).map(p => p.text || "").join("").trim();
+      ok = true; break;
+    } catch (e) {}
+  }
+  $("askStatus").textContent = ok ? "" : "Couldn't get an answer. Check your API key, or wait a minute if you've asked a lot.";
+  $("askBtn").disabled = false;
+};
 </script>
 </body>
 </html>
