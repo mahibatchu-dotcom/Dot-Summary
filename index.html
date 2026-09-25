@@ -6,8 +6,8 @@
 <meta name="theme-color" content="#1B2A41">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="My Hub">
-<title>My Hub</title>
+<meta name="apple-mobile-web-app-title" content="Mahendra Kumar Hub">
+<title>Mahendra Kumar Hub</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%231B2A41'/><circle cx='50' cy='50' r='18' fill='%23FFD84D'/></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -169,6 +169,19 @@
   dialog#remDlg { border: 1px solid var(--line); border-radius: 16px; background: var(--panel); color: var(--ink); padding: 20px; width: min(420px, calc(100vw - 24px)); }
   dialog#remDlg::backdrop { background: rgba(10, 18, 30, .45); }
 
+  .chap-t { font: inherit; text-align: left; background: none; border: 0; padding: 0; color: var(--ink); }
+  button.chap-t { cursor: pointer; text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
+  button.chap-t:hover { text-decoration-color: var(--ink); }
+  .jump { font: inherit; font-size: .75rem; font-weight: 700; background: var(--mark-soft); border: 0; border-radius: 999px; padding: 2px 8px; color: var(--ink); cursor: pointer; }
+
+  /* Book viewer */
+  dialog#viewer { border: 0; padding: 0; width: 100vw; height: 100%; max-width: 100vw; max-height: 100%; margin: 0; background: var(--bg); color: var(--ink); }
+  .v-bar { display: flex; align-items: center; gap: 8px; padding: calc(10px + env(safe-area-inset-top, 0px)) 14px 10px; border-bottom: 1px solid var(--line); background: var(--panel); flex-wrap: wrap; }
+  .v-bar .v-title { font-weight: 800; flex: 1; min-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .v-bar input { width: 70px; text-align: center; padding: 6px; }
+  .v-body { overflow: auto; height: calc(100% - 64px); padding: 14px; text-align: center; }
+  .v-body canvas { max-width: 100%; height: auto; box-shadow: 0 1px 4px rgba(0,0,0,.2); background: #fff; }
+
   /* Calendar */
   dialog#calDlg { border: 1px solid var(--line); border-radius: 16px; background: var(--panel); color: var(--ink); padding: 18px; width: min(460px, calc(100vw - 24px)); max-height: calc(100% - 24px); overflow: auto; }
   dialog#calDlg::backdrop { background: rgba(10, 18, 30, .45); }
@@ -209,7 +222,7 @@
 <body>
 
 <div class="bar">
-  <div class="brand"><span class="dot" aria-hidden="true"></span>My Hub</div>
+  <div class="brand"><span class="dot" aria-hidden="true"></span>Mahendra Kumar Hub</div>
   <nav class="sections" id="nav" hidden>
     <button data-view="dot" aria-current="true">Dot Notes</button>
     <button data-view="cfa" aria-current="false">CFA</button>
@@ -224,7 +237,7 @@
 <main>
   <!-- SIGN IN -->
   <div class="view signin" id="v-signin">
-    <h1>My Hub</h1>
+    <h1>Mahendra Kumar Hub</h1>
     <p class="muted">Your daily notes, study and routines in one place.</p>
     <button class="primary" id="signIn">Sign in with Google</button>
     <p class="muted" id="signMsg"></p>
@@ -373,6 +386,17 @@
     </div>
   </div>
 </main>
+
+<dialog id="viewer" aria-label="Book viewer">
+  <div class="v-bar">
+    <button class="pill" id="vClose">Close</button>
+    <span class="v-title" id="vTitle"></span>
+    <button class="pill" id="vPrev" aria-label="Previous page">‹</button>
+    <input type="number" id="vPage" min="1" aria-label="Page number"><span class="muted" id="vOf"></span>
+    <button class="pill" id="vNext" aria-label="Next page">›</button>
+  </div>
+  <div class="v-body" id="vBody"><p class="muted" id="vMsg"></p><canvas id="vCanvas"></canvas></div>
+</dialog>
 
 <dialog id="remDlg" aria-label="Set a reminder">
   <h2 id="remTitle" style="margin:0 0 4px"></h2>
@@ -625,14 +649,20 @@ function renderBooks() {
     (b.structure || []).forEach((s, i) => {
       const det = document.createElement("details");
       const sd = (s.chapters || []).filter((_, j) => done[`${i}_${j}`]).length;
-      det.innerHTML = `<summary></summary>`;
-      det.querySelector("summary").textContent = `${s.title}  (${sd}/${(s.chapters || []).length})`;
+      det.innerHTML = `<summary><span class="st"></span> <span class="muted"></span> <button class="jump" hidden>Open ↗</button></summary>`;
+      det.querySelector(".st").textContent = s.title;
+      det.querySelector("summary .muted").textContent = `(${sd}/${(s.chapters || []).length})`;
+      if (s.page) { const jb = det.querySelector(".jump"); jb.hidden = false; jb.textContent = "p. " + s.page; jb.title = "Open the book at this page"; jb.onclick = e => { e.preventDefault(); openBook(b, s.page, s.title); }; }
       (s.chapters || []).forEach((c, j) => {
         const k = `${i}_${j}`;
-        const l = document.createElement("label"); l.className = "chap";
+        const l = document.createElement("div"); l.className = "chap";
         const cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = !!done[k];
+        cb.setAttribute("aria-label", "Done: " + c.title);
         cb.onchange = () => updateDoc(doc(fs, "users", uid, "books", b.id), { ["done." + k]: cb.checked }).catch(console.error);
-        l.appendChild(cb); l.append(c.title);
+        const t = document.createElement(c.page ? "button" : "span");
+        t.className = "chap-t"; t.textContent = c.title;
+        if (c.page) { t.title = "Open at page " + c.page; t.onclick = () => openBook(b, c.page, c.title); }
+        l.appendChild(cb); l.appendChild(t);
         det.appendChild(l);
       });
       tree.appendChild(det);
@@ -659,9 +689,19 @@ async function outlineToStructure(pdf) {
   const ol = await pdf.getOutline();
   if (!ol || !ol.length) return null;
   const tidy = t => (t || "").replace(/\s+/g, " ").trim();
+  const page = async n => {
+    try {
+      let dest = n.dest;
+      if (typeof dest === "string") dest = await pdf.getDestination(dest);
+      if (!Array.isArray(dest)) return null;
+      const ref = dest[0];
+      return (typeof ref === "number" ? ref : await pdf.getPageIndex(ref)) + 1;
+    } catch (e) { return null; }
+  };
+  const item = async n => ({ title: tidy(n.title), page: await page(n) });
   const withKids = ol.filter(n => n.items && n.items.length);
-  if (!withKids.length) return [{ title: "Chapters", chapters: ol.map(n => ({ title: tidy(n.title) })) }];
-  return ol.filter(n => n.items && n.items.length).map(n => ({ title: tidy(n.title), chapters: n.items.map(c => ({ title: tidy(c.title) })) }));
+  if (!withKids.length) return [{ title: "Chapters", page: null, chapters: await Promise.all(ol.map(item)) }];
+  return Promise.all(withKids.map(async n => ({ ...(await item(n)), chapters: await Promise.all(n.items.map(item)) })));
 }
 async function aiStructure(pdf) {
   if (!geminiKey) return null;
@@ -680,17 +720,8 @@ async function extractBook(bookId, url) {
   const id = driveId(url);
   if (!id) { msg("Couldn't read that Drive link. Copy it again from Drive's Share menu."); return; }
   try {
-    msg("Asking Google for permission to read the file…");
-    const token = await driveToken();
-    if (!token) throw new Error("no token");
-    msg("Downloading the book from Drive (large books take a minute)…");
-    const r = await fetch(`https://www.googleapis.com/drive/v3/files/${id}?alt=media&supportsAllDrives=true`, { headers: { Authorization: "Bearer " + token } });
-    if (!r.ok) throw new Error(r.status === 404 ? "File not found. Is it in the Drive of the account you signed in with?" : r.status === 403 ? "Drive refused access. Make sure the Google Drive API is turned on (see setup steps)." : "Drive error " + r.status);
-    const buf = await r.arrayBuffer();
+    const pdf = await loadPdf(id, msg);
     msg("Reading chapters…");
-    const lib = window["pdfjs-dist/build/pdf"];
-    lib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
-    const pdf = await lib.getDocument({ data: buf }).promise;
     let structure = await outlineToStructure(pdf);
     if (!structure) { msg("No bookmarks in this PDF. Asking AI to read the contents pages…"); structure = await aiStructure(pdf); }
     if (!structure || !structure.length) { msg(geminiKey ? "Couldn't find a chapter list in this PDF." : "This PDF has no bookmarks. Save your Gemini key in Ask AI, then tap Re-read chapters."); return; }
@@ -718,6 +749,65 @@ $("bookForm").onsubmit = e => {
     .then(ref => extractBook(ref.id, url)).catch(console.error);
   $("bookName").value = ""; $("bookUrl").value = "";
 };
+
+/* ----- Book viewer: open a Drive PDF at a page ----- */
+let driveTok = null;                 // {token, exp}
+const pdfCache = {};                 // fileId -> pdf document (this session)
+async function driveTokenCached() {
+  if (driveTok && driveTok.exp > Date.now()) return driveTok.token;
+  const token = await driveToken();
+  driveTok = { token, exp: Date.now() + 50 * 60 * 1000 };
+  return token;
+}
+async function loadPdf(fileId, onMsg) {
+  if (pdfCache[fileId]) return pdfCache[fileId];
+  onMsg("Asking Google for permission to read the file…");
+  const token = await driveTokenCached();
+  onMsg("Downloading the book from Drive (large books take a minute)…");
+  const r = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&supportsAllDrives=true`, { headers: { Authorization: "Bearer " + token } });
+  if (r.status === 401) { driveTok = null; throw new Error("Permission expired. Try again."); }
+  if (!r.ok) throw new Error(r.status === 404 ? "File not found. Is it in the Drive of the account you signed in with?" : r.status === 403 ? "Drive refused access. Make sure the Google Drive API is turned on (see setup steps)." : "Drive error " + r.status);
+  const buf = await r.arrayBuffer();
+  const lib = window["pdfjs-dist/build/pdf"];
+  lib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+  const pdf = await lib.getDocument({ data: buf }).promise;
+  pdfCache[fileId] = pdf;
+  return pdf;
+}
+let vPdf = null, vNum = 1, vRendering = null;
+async function renderPage(n) {
+  if (!vPdf) return;
+  vNum = Math.min(Math.max(1, n), vPdf.numPages);
+  $("vPage").value = vNum; $("vOf").textContent = "of " + vPdf.numPages;
+  const page = await vPdf.getPage(vNum);
+  const width = Math.min($("vBody").clientWidth - 28, 1100);
+  const base = page.getViewport({ scale: 1 });
+  const scale = width / base.width, ratio = window.devicePixelRatio || 1;
+  const vp = page.getViewport({ scale: scale * ratio });
+  const c = $("vCanvas"); c.width = vp.width; c.height = vp.height; c.style.width = (vp.width / ratio) + "px";
+  if (vRendering) { try { vRendering.cancel(); } catch (e) {} }
+  vRendering = page.render({ canvasContext: c.getContext("2d"), viewport: vp });
+  try { await vRendering.promise; } catch (e) {}
+  $("vBody").scrollTop = 0;
+}
+async function openBook(b, page, label) {
+  const id = driveId(b.url);
+  $("vTitle").textContent = label ? `${b.name}: ${label}` : b.name;
+  $("vCanvas").width = 0; $("vMsg").textContent = "";
+  $("viewer").showModal();
+  try {
+    vPdf = await loadPdf(id, t => $("vMsg").textContent = t);
+    $("vMsg").textContent = "";
+    await renderPage(page || 1);
+  } catch (e) {
+    $("vMsg").textContent = e.code === "auth/popup-closed-by-user" ? "Permission window was closed. Close this and try again." : (e.message || "Couldn't open the book.");
+  }
+}
+$("vClose").onclick = () => $("viewer").close();
+$("vPrev").onclick = () => renderPage(vNum - 1);
+$("vNext").onclick = () => renderPage(vNum + 1);
+$("vPage").onchange = e => renderPage(parseInt(e.target.value) || 1);
+$("viewer").addEventListener("keydown", e => { if (e.key === "ArrowRight") renderPage(vNum + 1); if (e.key === "ArrowLeft") renderPage(vNum - 1); });
 
 /* ================= Medicines ================= */
 const DEFAULT_MEDS = [
@@ -903,7 +993,7 @@ function localIso(d) { const p = n => String(n).padStart(2, "0"); return `${d.ge
 async function createEvent(summary, start, rrule) {
   const end = new Date(start.getTime() + 15 * 60000);
   const ev = await calApi("POST", "", {
-    summary: "⏰ " + summary, description: "Reminder from My Hub",
+    summary: "⏰ " + summary, description: "Reminder from Mahendra Kumar Hub",
     start: { dateTime: localIso(start), timeZone: TZ }, end: { dateTime: localIso(end), timeZone: TZ },
     reminders: { useDefault: false, overrides: [{ method: "popup", minutes: 0 }] },
     ...(rrule ? { recurrence: [rrule] } : {})
