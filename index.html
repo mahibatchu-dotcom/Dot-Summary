@@ -950,8 +950,9 @@ function vLayout() {
   for (const p of vPages) {
     const r = p.ratio || vBaseSize.h / vBaseSize.w;
     p.el.style.width = w + "px"; p.el.style.height = Math.round(w * r) + "px";
-    if (p.rendered) vUnrender(p);
+    if (p.rendered || p.rendering) vUnrender(p);
   }
+  if (vObserver) { vObserver.disconnect(); vPages.forEach(p => vObserver.observe(p.el)); }   // re-check what's visible
 }
 function vUnrender(p) {
   if (p.task) { try { p.task.cancel(); } catch (e) {} p.task = null; }
@@ -991,7 +992,8 @@ function vDrawMarks(p) {
   const layer = p.el.querySelector(".marks");
   layer.innerHTML = "";
   for (const m of vMarks[p.n] || []) {
-    for (const [x, y, w, hgt] of m.rects) {
+    for (const rc of m.rects || []) {
+      const [x, y, w, hgt] = Array.isArray(rc) ? rc : [rc.x, rc.y, rc.w, rc.h];
       const d = document.createElement("div");
       d.className = "mk " + m.type;
       d.style.left = x * 100 + "%"; d.style.top = y * 100 + "%"; d.style.width = w * 100 + "%"; d.style.height = hgt * 100 + "%";
@@ -1037,8 +1039,10 @@ async function openBook(b, page, label) {
       vPages.push({ n, el, rendered: false });
     }
     $("vPages").appendChild(frag);
-    vLayout();
+    vLastW = $("vBody").clientWidth;
     if (vObserver) vObserver.disconnect();
+    vObserver = null;
+    vLayout();
     vObserver = new IntersectionObserver(entries => {
       for (const en of entries) {
         const p = vPages[+en.target.dataset.n - 1];
@@ -1068,12 +1072,14 @@ function vApplyMark(type, color) {
     const p = vPages.find(pp => { const b = pp.el.getBoundingClientRect(); return cx >= b.left && cx <= b.right && cy >= b.top && cy <= b.bottom; });
     if (!p) continue;
     const b = p.el.getBoundingClientRect();
-    const nr = [(r.left - b.left) / b.width, (r.top - b.top) / b.height, r.width / b.width, r.height / b.height].map(v => Math.round(v * 10000) / 10000);
+    const q = v => Math.round(v * 10000) / 10000;
+    const nr = { x: q((r.left - b.left) / b.width), y: q((r.top - b.top) / b.height), w: q(r.width / b.width), h: q(r.height / b.height) };
     (byPage[p.n] = byPage[p.n] || []).push(nr);
   }
   const pages = Object.keys(byPage);
   if (!pages.length) { $("vMsg").textContent = "Select text on the page itself."; return; }
-  for (const n of pages) addDoc(collection(fs, "users", uid, "books", vBook.id, "marks"), { page: +n, type, color, rects: byPage[n], createdAt: Date.now() }).catch(console.error);
+  for (const n of pages) addDoc(collection(fs, "users", uid, "books", vBook.id, "marks"), { page: +n, type, color, rects: byPage[n], createdAt: Date.now() })
+    .catch(e => { console.error(e); $("vMsg").textContent = "Couldn't save that mark. Try again."; });
   sel.removeAllRanges();
   $("vMsg").textContent = "";
 }
@@ -1105,7 +1111,14 @@ function vSetZoom(z) {
 }
 $("vIn").onclick = () => vSetZoom(vZoom + 0.25);
 $("vOut").onclick = () => vSetZoom(vZoom - 0.25);
-window.addEventListener("resize", () => { if ($("viewer").open && vPages.length) { const cur = vCurrentPage(); vLayout(); vGoto(cur); } });
+let vLastW = 0;
+window.addEventListener("resize", () => {
+  if (!$("viewer").open || !vPages.length) return;
+  const w = $("vBody").clientWidth;
+  if (Math.abs(w - vLastW) < 2) return;              // height-only change (e.g. phone address bar)
+  vLastW = w;
+  const cur = vCurrentPage(); vLayout(); vGoto(cur);
+});
 
 /* ================= Medicines ================= */
 const DEFAULT_MEDS = [
