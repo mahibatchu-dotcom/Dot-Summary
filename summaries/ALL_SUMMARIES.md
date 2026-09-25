@@ -1,0 +1,34 @@
+# The Baloch Spot
+*2026-09-25* · [Original article](https://www.dot.news/post/6ab5525f2f2ddc0002ff84f7)
+
+**In one line:**
+Balochistan is Pakistan's largest and most resource-rich province, but it remains its poorest, driving long-standing local resistance and conflict over resource exploitation.
+
+**Key points:**
+- Balochistan spans nearly half of Pakistan's land territory but contains only five percent of the country's population.
+- The region is rich in natural resources, including gas, gold, and copper, yet remains Pakistan's poorest province.
+- Tensions date back to March 1948, when the historically self-governing princely state of Kalat was pressured into joining Pakistan.
+- Local ethnic groups feel sidelined by the dominant Punjabi ethnic group, which holds major power in Pakistan's government and military.
+- International projects like the China-funded Gwadar port fuel local anger because residents feel excluded from the economic benefits.
+
+**Numbers and names to remember:**
+- **1600s**: The decade when the Baloch identity began to form under the rulers of Kalat.
+- **March 1948**: The month and year the Khan of Kalat agreed to join Pakistan.
+- **5%**: The percentage of Pakistan's population living in Balochistan.
+- **$8 trillion**: The claimed value of Pakistan's mineral reserves, many of which are in Balochistan.
+- **Muhammad Ali Jinnah**: The Pakistani leader and former legal advisor to Kalat who worked to integrate the region into Pakistan.
+- **Reko Diq**: One of the world's largest gold and copper mines, located in Balochistan.
+- **Gwadar**: A strategic port city in Balochistan currently run by a Chinese company.
+- **CPEC**: China–Pakistan Economic Corridor, a massive infrastructure project linking China and Pakistan.
+
+**Why it matters:**
+The economic neglect and resource extraction in Balochistan have fueled decades of regional instability and local protests. This ongoing conflict directly impacts major global trade routes and multi-billion-dollar investments from international powers like China.
+
+**Key terms:**
+- **Kalat**: A historic region and former princely state in central Pakistan where Baloch identity took shape.
+- **CPEC**: China–Pakistan Economic Corridor, a massive Chinese-funded network of roads, railways, and pipelines.
+- **Sui fields**: Natural gas fields in Balochistan that supply energy to other parts of Pakistan.
+- **BLA**: Balochistan Liberation Army, a militant group active in the region.
+
+---
+
