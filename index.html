@@ -423,6 +423,7 @@
     <label id="nmLink">Dot article link<input id="newUrl" type="url" placeholder="https://www.dot.news/post/..."></label>
     <label id="nmDate" hidden>Date of the Dot story<input id="newDate" type="date"></label>
     <div class="row" style="margin-top:12px"><button class="primary" id="newGo">Summarise</button><span class="muted" id="newMsg"></span></div>
+    <button class="ghost" id="ghChange" style="margin-top:10px;padding-left:0">Change GitHub token</button>
   </div>
   <div id="newPreview" hidden>
     <h3 id="pvTitle" style="font-family:var(--read);font-size:1.5rem;margin:8px 0"></h3>
@@ -610,7 +611,7 @@ async function gh(method, path, body) {
     method, headers: { Authorization: "Bearer " + ghToken, Accept: "application/vnd.github+json", "Content-Type": "application/json" },
     body: body ? JSON.stringify(body) : undefined
   });
-  if (r.status === 401) throw new Error("GitHub token isn't valid. Paste a new one.");
+  if (r.status === 401) { $("ghBox").hidden = false; throw new Error("GitHub token isn't valid. Paste a new one above."); }
   return r;
 }
 let nm = "link", pending = null, pollTimer = null;
@@ -626,7 +627,8 @@ function resetNew() {
 }
 $("dnNew").onclick = () => { resetNew(); $("newDate").value = dstr(new Date()); $("newDate").max = dstr(new Date()); $("newDlg").showModal(); };
 $("newClose").onclick = () => { clearTimeout(pollTimer); $("newDlg").close(); };
-$("ghSave").onclick = () => { const t = $("ghTok").value.trim(); if (t) setDoc(privDoc(), { githubToken: t }, { merge: true }).then(() => $("ghTok").value = ""); };
+$("ghSave").onclick = () => { const t = $("ghTok").value.trim(); if (t) setDoc(privDoc(), { githubToken: t }, { merge: true }).then(() => { $("ghTok").value = ""; $("newMsg").textContent = "Token saved."; }); };
+$("ghChange").onclick = () => { $("ghBox").hidden = false; $("ghTok").focus(); };
 
 $("newGo").onclick = async () => {
   if (!ghToken) { $("newMsg").textContent = "Save your GitHub token above first."; return; }
@@ -639,7 +641,7 @@ $("newGo").onclick = async () => {
     const r = await gh("POST", "/actions/workflows/daily-summary.yml/dispatches", {
       ref: "main", inputs: { article_url: nm === "link" ? url : "", article_date: nm === "date" ? date : "", request_id: requestId }
     });
-    if (r.status !== 204) throw new Error(r.status === 403 || r.status === 404 ? "GitHub refused. Check the token has Actions and Contents set to Read and write for this repository." : "GitHub error " + r.status);
+    if (r.status !== 204) { if (r.status === 403 || r.status === 404) $("ghBox").hidden = false; throw new Error(r.status === 403 || r.status === 404 ? "GitHub refused this token. Make a new one with Actions and Contents set to Read and write for Mahendra-Kumar-Hub, and paste it above." : "GitHub error " + r.status); }
     const started = Date.now();
     const poll = async () => {
       const secs = Math.round((Date.now() - started) / 1000);
