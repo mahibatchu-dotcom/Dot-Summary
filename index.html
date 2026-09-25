@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1B2A41">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Dot Notes">
+<title>Dot Notes</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%231B2A41'/><circle cx='50' cy='50' r='18' fill='%23FFD84D'/></svg>">
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%231B2A41'/><circle cx='50' cy='50' r='18' fill='%23FFD84D'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<style>
+  :root {
+    --bg: #EEF1F5;
+    --panel: #FFFFFF;
+    --ink: #1B2A41;
+    --muted: #5B6B82;
+    --line: #D6DDE7;
+    --mark: #FFD84D;
+    --mark-soft: #FFF3C2;
+    --ui: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --read: "Source Serif 4", Georgia, "Times New Roman", serif;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #111A27; --panel: #182335; --ink: #E6ECF4; --muted: #93A3B8;
+      --line: #2A3850; --mark: #FFD84D; --mark-soft: #3A3420;
+    }
+  }
+  *, *::before, *::after { box-sizing: inherit; }
+  html, body { height: 100%; margin: 0; }
+  body { background: var(--bg); color: var(--ink); font-family: var(--ui); }
+
+  .app { display: grid; grid-template-columns: 340px 1fr; height: 100%; }
+
+  /* List of days */
+  .side { border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; background: var(--bg); }
+  .brand { display: flex; align-items: center; gap: 10px; padding: 22px 22px 14px; }
+  .brand .dot { width: 14px; height: 14px; border-radius: 50%; background: var(--mark); box-shadow: 0 0 0 4px var(--ink); }
+  .brand h1 { font-size: 1.25rem; font-weight: 800; margin: 0; letter-spacing: -0.01em; }
+  .tools { display: flex; gap: 8px; padding: 0 22px 14px; }
+  .tools input {
+    flex: 1; min-width: 0; font: inherit; font-size: 0.95rem; padding: 10px 12px;
+    border: 1px solid var(--line); border-radius: 10px; background: var(--panel); color: var(--ink);
+  }
+  .tools button, .back {
+    font: inherit; font-weight: 600; font-size: 0.9rem; padding: 10px 12px; border-radius: 10px;
+    border: 1px solid var(--ink); background: var(--ink); color: var(--bg); cursor: pointer; white-space: nowrap;
+  }
+  .count { padding: 0 22px 8px; font-size: 0.8rem; color: var(--muted); }
+  ul.list { list-style: none; margin: 0; padding: 0 12px 24px; overflow-y: auto; flex: 1; }
+  ul.list li button {
+    width: 100%; text-align: left; font: inherit; color: inherit; background: none; border: 0;
+    padding: 12px 10px; border-radius: 10px; cursor: pointer; display: block;
+  }
+  ul.list li button:hover { background: var(--panel); }
+  ul.list li button[aria-current="true"] { background: var(--panel); box-shadow: inset 4px 0 0 var(--mark); }
+  .when { font-size: 0.78rem; color: var(--muted); display: block; margin-bottom: 2px; }
+  .ttl { font-weight: 600; font-size: 0.98rem; line-height: 1.35; }
+
+  /* Reader */
+  .read { overflow-y: auto; min-height: 0; background: var(--panel); }
+  .page { max-width: 68ch; margin: 0 auto; padding: 48px 32px 80px; }
+  .page .date { color: var(--muted); font-size: 0.9rem; }
+  .page h2 {
+    font-family: var(--read); font-weight: 600; font-size: clamp(1.8rem, 3.5vw, 2.6rem);
+    line-height: 1.15; margin: 8px 0 12px; letter-spacing: -0.01em;
+  }
+  .page .src a { color: var(--muted); font-size: 0.9rem; }
+  .body { font-family: var(--read); font-size: 1.12rem; line-height: 1.7; margin-top: 28px; }
+  .body p { margin: 0 0 1.1em; }
+  .body ul { padding-left: 1.2em; margin: 0 0 1.3em; }
+  .body li { margin-bottom: 0.45em; }
+  .body strong {
+    font-family: var(--ui); font-weight: 800; font-size: 0.92em;
+    background: linear-gradient(transparent 55%, var(--mark-soft) 55%);
+  }
+  .back { display: none; margin-bottom: 20px; background: transparent; color: var(--ink); }
+  .empty { color: var(--muted); padding: 60px 32px; max-width: 50ch; margin: 0 auto; line-height: 1.6; }
+
+  :focus-visible { outline: 3px solid var(--mark); outline-offset: 2px; }
+
+  /* Phone: one screen at a time */
+  @media (max-width: 800px) {
+    .app { display: block; }
+    .side { height: 100%; border: 0; }
+    .read { display: none; height: 100%; }
+    .app.reading .side { display: none; }
+    .app.reading .read { display: block; }
+    .back { display: inline-block; }
+    .page { padding: 20px 20px 60px; }
+  }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <aside class="side">
+    <div class="brand"><span class="dot" aria-hidden="true"></span><h1>Dot Notes</h1></div>
+    <div class="tools">
+      <input id="q" type="search" placeholder="Search summaries" aria-label="Search summaries">
+      <button id="rand" title="Open a random past summary">Revise one</button>
+    </div>
+    <div class="count" id="count">Loading…</div>
+    <ul class="list" id="list"></ul>
+  </aside>
+  <main class="read" id="read">
+    <div class="empty" id="placeholder">Pick a day on the left to read its summary.</div>
+  </main>
+</div>
+
+<script>
+const items = [];          // {date, title, url, body, text}
+let current = null;
+
+const fmt = d => new Date(d + "T00:00:00").toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+
+function parse(md, date) {
+  const lines = md.split("\n");
+  const title = (lines[0] || "").replace(/^#\s*/, "").trim();
+  const link = (lines[1] || "").match(/\((https?:[^)]+)\)/);
+  const body = lines.slice(2).join("\n").trim();
+  return { date, title, url: link ? link[1] : "", body, text: (title + " " + body).toLowerCase() };
+}
+
+async function load() {
+  const bust = "?t=" + Date.now();
+  try {
+    const idx = await fetch("summaries/index.json" + bust).then(r => { if (!r.ok) throw 0; return r.json(); });
+    const dates = [...new Set(Object.values(idx))].sort().reverse();
+    const results = await Promise.all(dates.map(d =>
+      fetch(`summaries/${d}.md${bust}`).then(r => r.ok ? r.text() : null).then(t => t && parse(t, d)).catch(() => null)
+    ));
+    items.push(...results.filter(Boolean));
+  } catch (e) {
+    document.getElementById("count").textContent = "Couldn't load summaries. Check that the summaries folder exists in the repository.";
+    return;
+  }
+  render("");
+  if (items.length && window.innerWidth > 800) open(items[0]);
+}
+
+function render(query) {
+  const list = document.getElementById("list");
+  const q = query.trim().toLowerCase();
+  const shown = q ? items.filter(i => i.text.includes(q)) : items;
+  document.getElementById("count").textContent =
+    shown.length ? `${shown.length} ${shown.length === 1 ? "summary" : "summaries"}` : (q ? "No summaries match that search." : "No summaries yet. The first one arrives at 8:00 AM.");
+  list.innerHTML = "";
+  for (const it of shown) {
+    const li = document.createElement("li");
+    const b = document.createElement("button");
+    b.innerHTML = `<span class="when"></span><span class="ttl"></span>`;
+    b.querySelector(".when").textContent = fmt(it.date);
+    b.querySelector(".ttl").textContent = it.title;
+    b.setAttribute("aria-current", current === it ? "true" : "false");
+    b.onclick = () => open(it);
+    li.appendChild(b);
+    list.appendChild(li);
+  }
+}
+
+function open(it) {
+  current = it;
+  const read = document.getElementById("read");
+  read.innerHTML = "";
+  const page = document.createElement("article");
+  page.className = "page";
+  page.innerHTML = `
+    <button class="back" id="back">Back to all days</button>
+    <div class="date"></div>
+    <h2></h2>
+    <div class="src"></div>
+    <div class="body"></div>`;
+  page.querySelector(".date").textContent = fmt(it.date);
+  page.querySelector("h2").textContent = it.title;
+  if (it.url) {
+    const a = document.createElement("a");
+    a.href = it.url; a.target = "_blank"; a.rel = "noopener"; a.textContent = "Read the original on Dot";
+    page.querySelector(".src").appendChild(a);
+  }
+  page.querySelector(".body").innerHTML = window.marked ? marked.parse(it.body) : it.body.replace(/</g, "&lt;").replace(/\n/g, "<br>");
+  read.appendChild(page);
+  read.scrollTop = 0;
+  page.querySelector("#back").onclick = () => document.getElementById("app").classList.remove("reading");
+  document.getElementById("app").classList.add("reading");
+  render(document.getElementById("q").value);
+}
+
+document.getElementById("q").addEventListener("input", e => render(e.target.value));
+document.getElementById("rand").onclick = () => { if (items.length) open(items[Math.floor(Math.random() * items.length)]); };
+load();
+</script>
+</body>
+</html>
