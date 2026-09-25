@@ -111,6 +111,46 @@
   .step input { width: 52px; text-align: center; padding: 5px; }
   .answer { font-family: var(--read); font-size: 1.05rem; line-height: 1.65; white-space: pre-wrap; margin-top: 14px; }
 
+  /* Medicines */
+  ul.meds { list-style: none; margin: 0; padding: 0; }
+  ul.meds li { display: flex; align-items: center; gap: 14px; padding: 14px 0; border-top: 1px solid var(--line); }
+  ul.meds li:first-child { border-top: 0; }
+  .tick {
+    width: 44px; height: 44px; flex: none; border-radius: 50%; border: 2px solid var(--ink);
+    background: transparent; color: var(--ink); font: inherit; font-size: 1.3rem; font-weight: 800; cursor: pointer;
+  }
+  .tick[aria-pressed="true"] { background: var(--mark); border-color: var(--mark); color: #1B2A41; }
+  .med-name { font-weight: 700; font-size: 1.05rem; }
+  .med-sub { font-size: .84rem; color: var(--muted); }
+  .strip { display: grid; grid-template-columns: repeat(14, 1fr); gap: 4px; }
+  .strip div { aspect-ratio: 1; border-radius: 6px; background: var(--bg); border: 1px solid var(--line); display: grid; place-items: center; font-size: .7rem; color: var(--muted); }
+  .strip div.full { background: var(--mark); border-color: var(--mark); color: #1B2A41; font-weight: 800; }
+
+  /* Calendar */
+  dialog#calDlg { border: 1px solid var(--line); border-radius: 16px; background: var(--panel); color: var(--ink); padding: 18px; width: min(460px, calc(100vw - 24px)); max-height: calc(100% - 24px); overflow: auto; }
+  dialog#calDlg::backdrop { background: rgba(10, 18, 30, .45); }
+  .cal-head { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+  .cal-dow span { text-align: center; font-size: .72rem; color: var(--muted); padding-bottom: 4px; }
+  .cal-grid button {
+    aspect-ratio: 1; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink);
+    font: inherit; font-size: .88rem; cursor: pointer; position: relative; padding: 0;
+  }
+  .cal-grid button.full { background: var(--mark); border-color: var(--mark); color: #1B2A41; font-weight: 800; }
+  .cal-grid button.part { background: var(--mark-soft); }
+  .cal-grid button.miss { border-color: var(--bad); }
+  .cal-grid button.future { opacity: .35; cursor: default; }
+  .cal-grid button.today { outline: 2px solid var(--ink); outline-offset: 1px; }
+  .cal-grid button[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--ink); }
+  .cal-grid button .wk { position: absolute; bottom: 1px; left: 0; right: 0; line-height: 1; }
+  .wk { color: #3867D6; font-weight: 800; }
+  .cal-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: .78rem; color: var(--muted); margin: 14px 0 6px; }
+  .lg { display: inline-block; width: 12px; height: 12px; border-radius: 4px; vertical-align: -2px; margin-right: 5px; border: 1px solid var(--line); }
+  .lg.full { background: var(--mark); border-color: var(--mark); } .lg.part { background: var(--mark-soft); } .lg.miss { border-color: var(--bad); }
+  .cal-day { border-top: 1px solid var(--line); margin-top: 10px; padding-top: 10px; }
+  .cal-day label.chk { flex-direction: row; align-items: center; gap: 10px; font-size: .95rem; color: var(--ink); font-weight: 600; padding: 6px 0; }
+  .cal-day input[type=checkbox] { width: 20px; height: 20px; accent-color: var(--ink); }
+
   @media (max-width: 800px) {
     .dn { display: block; height: 100%; }
     .dn-side { height: 100%; border: 0; }
@@ -130,6 +170,7 @@
   <nav class="sections" id="nav" hidden>
     <button data-view="dot" aria-current="true">Dot Notes</button>
     <button data-view="cfa" aria-current="false">CFA</button>
+    <button data-view="meds" aria-current="false">Medicines</button>
   </nav>
   <div class="who" id="who" hidden><span id="whoName"></span><button id="signOut">Sign out</button></div>
 </div>
@@ -226,7 +267,52 @@
       </section>
     </div>
   </div>
+
+  <!-- MEDICINES -->
+  <div class="view" id="v-meds" hidden>
+    <div class="wrap" style="max-width:640px">
+      <div class="panel">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px">
+          <h2 id="medToday" style="margin:0">Today</h2>
+          <button class="pill" id="calOpen" aria-label="Open calendar">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" style="vertical-align:-3px;margin-right:6px"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Calendar</button>
+        </div>
+        <ul class="meds" id="medList"></ul>
+      </div>
+      <div class="panel">
+        <h2>Last 14 days</h2>
+        <div class="strip" id="medStrip"></div>
+        <p class="muted" style="margin-bottom:0">Filled means every daily medicine was taken that day.</p>
+      </div>
+      <div class="panel">
+        <h2>Add a medicine</h2>
+        <form class="row" id="medForm">
+          <label style="flex:1;min-width:160px">Name<input id="medName" required placeholder="e.g. Iron tablet"></label>
+          <label>How often<select id="medFreq"><option value="daily">Every day</option><option value="weekly">Once a week</option></select></label>
+          <button class="primary" type="submit">Add</button>
+        </form>
+      </div>
+    </div>
+  </div>
 </main>
+
+<dialog id="calDlg" aria-label="Medicine calendar">
+  <div class="cal-head">
+    <button class="pill" id="calPrev" aria-label="Previous month">‹</button>
+    <h2 id="calTitle" style="margin:0"></h2>
+    <button class="pill" id="calNext" aria-label="Next month">›</button>
+    <button class="ghost" id="calClose" style="margin-left:auto">Close</button>
+  </div>
+  <div class="cal-grid cal-dow"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div>
+  <div class="cal-grid" id="calGrid"></div>
+  <div class="cal-legend">
+    <span><i class="lg full"></i>All daily taken</span>
+    <span><i class="lg part"></i>Some missed</span>
+    <span><i class="lg miss"></i>None taken</span>
+    <span><b class="wk">•</b>Weekly medicine taken</span>
+  </div>
+  <div id="calDay" class="cal-day"></div>
+</dialog>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -279,6 +365,7 @@ onAuthStateChanged(auth, user => {
   let last = "dot"; try { last = localStorage.getItem("hub.view") || "dot"; } catch (e) {}
   show(last);
   startCfa(user.uid);
+  startMeds(user.uid);
 });
 
 /* ================= Dot Notes ================= */
@@ -445,6 +532,149 @@ $("bookForm").onsubmit = e => {
   addDoc(collection(fs, "users", uid, "books"), { name: $("bookName").value.trim(), topic: $("bookTopic").value, url, createdAt: Date.now() }).catch(console.error);
   $("bookName").value = ""; $("bookUrl").value = "";
 };
+
+/* ================= Medicines ================= */
+const DEFAULT_MEDS = [
+  { id: "b12", name: "Vitamin B12", freq: "daily" },
+  { id: "vitd", name: "Vitamin D", freq: "weekly" },
+];
+let meds = [], medLog = {};   // medLog: date -> {taken: {id: true}}
+const dstr = d => d.toLocaleDateString("en-CA");
+const medsDoc = () => doc(fs, "users", uid, "meta", "meds");
+const logDoc = date => doc(fs, "users", uid, "medlog", date);
+function mondayOf(d = new Date()) { const m = new Date(d); m.setHours(0, 0, 0, 0); m.setDate(m.getDate() - ((m.getDay() + 6) % 7)); return dstr(m); }
+
+function startMeds(u) {
+  unsubs.push(onSnapshot(medsDoc(), s => {
+    if (!s.exists()) { setDoc(medsDoc(), { list: DEFAULT_MEDS }).catch(console.error); return; }
+    meds = s.data().list || []; renderMeds();
+  }));
+  unsubs.push(onSnapshot(query(collection(fs, "users", u, "medlog"), orderBy("date", "desc"), limit(400)), q => {
+    medLog = {}; q.docs.forEach(d => medLog[d.id] = d.data()); renderMeds();
+  }));
+}
+
+function takenOn(date, id) { return !!(medLog[date] && medLog[date].taken && medLog[date].taken[id]); }
+function weeklyDoneDate(id) {
+  const ws = mondayOf();
+  return Object.keys(medLog).filter(d => d >= ws && takenOn(d, id)).sort()[0] || null;
+}
+function setTaken(date, id, val) {
+  const taken = { ...((medLog[date] || {}).taken || {}) };
+  if (val) taken[id] = true; else delete taken[id];
+  medLog[date] = { date, taken }; renderMeds();
+  setDoc(logDoc(date), { date, taken }).catch(console.error);
+}
+
+function renderMeds() {
+  const today = dstr(new Date());
+  $("medToday").textContent = "Today, " + new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short" });
+  const ul = $("medList"); ul.innerHTML = "";
+  if (!meds.length) ul.innerHTML = `<li class="muted">No medicines yet. Add one below.</li>`;
+  for (const m of meds) {
+    let done, sub, date;
+    if (m.freq === "weekly") {
+      date = weeklyDoneDate(m.id);
+      done = !!date;
+      sub = done ? `Taken this week on ${new Date(date + "T00:00:00").toLocaleDateString("en-IN", { weekday: "long" })}` : "Once a week · not taken yet this week";
+    } else {
+      date = today; done = takenOn(today, m.id);
+      sub = done ? "Taken today" : "Every day";
+    }
+    const li = document.createElement("li");
+    li.innerHTML = `<button class="tick" aria-pressed="${done}"></button><div style="flex:1"><div class="med-name"></div><div class="med-sub"></div></div><button class="ghost">Remove</button>`;
+    const tick = li.querySelector(".tick");
+    tick.textContent = done ? "✓" : "";
+    tick.setAttribute("aria-label", (done ? "Undo " : "Mark taken: ") + m.name);
+    li.querySelector(".med-name").textContent = m.name;
+    li.querySelector(".med-sub").textContent = sub;
+    tick.onclick = () => done ? setTaken(date, m.id, false) : setTaken(today, m.id, true);
+    li.querySelector(".ghost").onclick = () => {
+      if (!confirm(`Remove ${m.name} from your list?`)) return;
+      setDoc(medsDoc(), { list: meds.filter(x => x.id !== m.id) }).catch(console.error);
+    };
+    ul.appendChild(li);
+  }
+
+  const daily = meds.filter(m => m.freq !== "weekly");
+  const strip = $("medStrip"); strip.innerHTML = "";
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date(); d.setDate(d.getDate() - i);
+    const ds = dstr(d);
+    const full = daily.length && daily.every(m => takenOn(ds, m.id));
+    const cell = document.createElement("div");
+    cell.textContent = d.getDate();
+    cell.title = d.toLocaleDateString("en-IN", { day: "numeric", month: "short" }) + (full ? ": all taken" : "");
+    if (full) cell.className = "full";
+    strip.appendChild(cell);
+  }
+  renderCal();
+}
+
+$("medForm").onsubmit = e => {
+  e.preventDefault();
+  const name = $("medName").value.trim(); if (!name) return;
+  const m = { id: "m" + Date.now(), name, freq: $("medFreq").value };
+  $("medName").value = "";
+  setDoc(medsDoc(), { list: [...meds, m] }).catch(console.error);
+};
+
+/* ----- Calendar ----- */
+let calMonth = new Date(); calMonth.setDate(1);
+let calSel = null;
+function dayStatus(ds) {
+  const daily = meds.filter(m => m.freq !== "weekly");
+  const n = daily.filter(m => takenOn(ds, m.id)).length;
+  const weekly = meds.some(m => m.freq === "weekly" && takenOn(ds, m.id));
+  return { cls: !daily.length ? "" : n === daily.length ? "full" : n ? "part" : "miss", weekly };
+}
+function renderCal() {
+  if (!$("calDlg").open) return;
+  const y = calMonth.getFullYear(), mo = calMonth.getMonth(), today = dstr(new Date());
+  $("calTitle").textContent = calMonth.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
+  const now = new Date();
+  $("calNext").disabled = y > now.getFullYear() || (y === now.getFullYear() && mo >= now.getMonth());
+  const grid = $("calGrid"); grid.innerHTML = "";
+  const lead = (new Date(y, mo, 1).getDay() + 6) % 7;
+  for (let i = 0; i < lead; i++) grid.appendChild(document.createElement("span"));
+  const last = new Date(y, mo + 1, 0).getDate();
+  for (let d = 1; d <= last; d++) {
+    const ds = dstr(new Date(y, mo, d));
+    const b = document.createElement("button");
+    b.textContent = d;
+    if (ds > today) { b.className = "future"; b.disabled = true; }
+    else {
+      const st = dayStatus(ds);
+      if (st.cls) b.classList.add(st.cls);
+      if (st.weekly) { const w = document.createElement("b"); w.className = "wk"; w.textContent = "•"; b.appendChild(w); }
+      b.onclick = () => { calSel = ds; renderCal(); };
+    }
+    if (ds === today) b.classList.add("today");
+    b.setAttribute("aria-pressed", ds === calSel);
+    grid.appendChild(b);
+  }
+  renderCalDay();
+}
+function renderCalDay() {
+  const box = $("calDay");
+  if (!calSel) { box.innerHTML = `<p class="muted" style="margin:0">Tap a day to see what you took. You can also fix a day you forgot to tick.</p>`; return; }
+  box.innerHTML = "";
+  const h = document.createElement("div"); h.style.fontWeight = "800"; h.style.marginBottom = "4px";
+  h.textContent = new Date(calSel + "T00:00:00").toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" });
+  box.appendChild(h);
+  for (const m of meds) {
+    const l = document.createElement("label"); l.className = "chk";
+    const c = document.createElement("input"); c.type = "checkbox"; c.checked = takenOn(calSel, m.id);
+    c.onchange = () => setTaken(calSel, m.id, c.checked);
+    l.appendChild(c); l.append(m.name + (m.freq === "weekly" ? " (weekly)" : ""));
+    box.appendChild(l);
+  }
+}
+$("calOpen").onclick = () => { calMonth = new Date(); calMonth.setDate(1); calSel = null; $("calDlg").showModal(); renderCal(); };
+$("calClose").onclick = () => $("calDlg").close();
+$("calDlg").addEventListener("click", e => { if (e.target === $("calDlg")) $("calDlg").close(); });
+$("calPrev").onclick = () => { calMonth.setMonth(calMonth.getMonth() - 1); calSel = null; renderCal(); };
+$("calNext").onclick = () => { calMonth.setMonth(calMonth.getMonth() + 1); calSel = null; renderCal(); };
 
 /* Ask a doubt (Gemini) */
 $("saveKey").onclick = () => { const k = $("gkey").value.trim(); if (k) setDoc(privDoc(), { geminiKey: k }).then(() => $("gkey").value = ""); };
