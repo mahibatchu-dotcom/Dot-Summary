@@ -17,7 +17,7 @@ from email.message import EmailMessage
 import requests
 from playwright.sync_api import sync_playwright
 
-HOME_URL = "https://www.dot.news/?lang=en"
+HOME_URL = "https://www.dot.news/posts"
 ROOT = Path(__file__).parent
 SUMMARY_DIR = ROOT / "summaries"
 DEBUG_DIR = ROOT / "debug"
@@ -60,7 +60,7 @@ def get_article():
         url = override or HOME_URL
         text = load_text(page, url)
 
-        if not override and len(text) < MIN_ARTICLE_CHARS:
+        if not override:
             link = find_article_link(page)
             if link:
                 url = link
