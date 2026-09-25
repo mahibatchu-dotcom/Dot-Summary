@@ -13,6 +13,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
   :root {
     --bg: #EEF1F5; --panel: #FFFFFF; --ink: #1B2A41; --muted: #5B6B82;
@@ -27,6 +28,7 @@
     :root { --bg: #111A27; --panel: #182335; --ink: #E6ECF4; --muted: #93A3B8; --line: #2A3850; --mark-soft: #3A3420; --bad: #F2867E; }
   }
   *, *::before, *::after { box-sizing: inherit; }
+  [hidden] { display: none !important; }
   html, body { height: 100%; margin: 0; }
   body { background: var(--bg); color: var(--ink); font-family: var(--ui); display: flex; flex-direction: column; }
 
@@ -126,6 +128,40 @@
   .strip div { aspect-ratio: 1; border-radius: 6px; background: var(--bg); border: 1px solid var(--line); display: grid; place-items: center; font-size: .7rem; color: var(--muted); }
   .strip div.full { background: var(--mark); border-color: var(--mark); color: #1B2A41; font-weight: 800; }
 
+  /* To do */
+  ul.todos { list-style: none; margin: 0; padding: 0; }
+  ul.todos li { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+  ul.todos li:first-child { border-top: 0; }
+  ul.todos input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--ink); flex: none; }
+  ul.todos .t { flex: 1; overflow-wrap: anywhere; }
+  #doneList .t { text-decoration: line-through; color: var(--muted); }
+  details summary { cursor: pointer; padding: 6px 0; }
+
+  /* Rough */
+  .rnote { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; margin-bottom: 12px; }
+  .rnote textarea { background: transparent; border: 0; padding: 0; min-height: 60px; font-family: var(--read); font-size: 1.02rem; line-height: 1.6; }
+  .rnote .meta { display: flex; justify-content: space-between; align-items: center; font-size: .78rem; color: var(--muted); margin-top: 6px; }
+
+  /* Chat */
+  .chat-wrap { max-width: 760px; display: flex; flex-direction: column; gap: 10px; min-height: 100%; }
+  .chat { flex: 1; display: flex; flex-direction: column; gap: 10px; }
+  .msg { max-width: 85%; padding: 12px 14px; border-radius: 14px; line-height: 1.6; overflow-wrap: anywhere; }
+  .msg.ai { background: var(--panel); border: 1px solid var(--line); align-self: flex-start; font-family: var(--read); font-size: 1.02rem; }
+  .msg.ai p { margin: 0 0 .7em; } .msg.ai p:last-child { margin: 0; } .msg.ai ul { margin: 0 0 .7em; padding-left: 1.2em; }
+  .msg.me { background: var(--ink); color: var(--bg); align-self: flex-end; white-space: pre-wrap; }
+  .chat-in { display: flex; gap: 8px; position: sticky; bottom: 0; background: var(--bg); padding: 8px 0; }
+  .chat-in textarea { min-height: 44px; max-height: 160px; flex: 1; }
+
+  /* Book tree */
+  .book { border-top: 1px solid var(--line); padding: 14px 0; }
+  .book:first-child { border-top: 0; }
+  .book-head { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .book-head a { color: var(--ink); font-weight: 800; }
+  .book details { margin: 8px 0 0 2px; }
+  .book summary { font-weight: 700; font-size: .95rem; }
+  .chap { display: flex; gap: 10px; align-items: flex-start; padding: 5px 0 5px 18px; font-size: .93rem; cursor: pointer; font-weight: 400; color: var(--ink); flex-direction: row; }
+  .chap input { width: 18px; height: 18px; accent-color: var(--ink); flex: none; margin-top: 2px; }
+
   /* Calendar */
   dialog#calDlg { border: 1px solid var(--line); border-radius: 16px; background: var(--panel); color: var(--ink); padding: 18px; width: min(460px, calc(100vw - 24px)); max-height: calc(100% - 24px); overflow: auto; }
   dialog#calDlg::backdrop { background: rgba(10, 18, 30, .45); }
@@ -171,6 +207,9 @@
     <button data-view="dot" aria-current="true">Dot Notes</button>
     <button data-view="cfa" aria-current="false">CFA</button>
     <button data-view="meds" aria-current="false">Medicines</button>
+    <button data-view="todo" aria-current="false">To Do</button>
+    <button data-view="rough" aria-current="false">Rough</button>
+    <button data-view="ai" aria-current="false">Ask AI</button>
   </nav>
   <div class="who" id="who" hidden><span id="whoName"></span><button id="signOut">Sign out</button></div>
 </div>
@@ -204,7 +243,6 @@
         <button class="pill" data-sub="today" aria-selected="true">Today</button>
         <button class="pill" data-sub="topics" aria-selected="false">Topics</button>
         <button class="pill" data-sub="books" aria-selected="false">Books</button>
-        <button class="pill" data-sub="ask" aria-selected="false">Ask a doubt</button>
       </div>
 
       <section data-subview="today">
@@ -242,29 +280,61 @@
       <section data-subview="books" hidden>
         <div class="panel">
           <h2>Add a book from Google Drive</h2>
-          <p class="muted" style="margin-top:0">In Google Drive, open the book's ⋮ menu → Share → Copy link, then paste it here. Keep the Drive file private: only you can open it.</p>
+          <p class="muted" style="margin-top:0">In Google Drive, open the book's ⋮ menu → Share → Copy link, then paste it here. The file stays private. When you add it, Google asks you once to let this site read your Drive, so it can pull out the chapter list.</p>
           <form class="row" id="bookForm">
             <label style="flex:1;min-width:160px">Book name<input id="bookName" required placeholder="e.g. Schweser Book 1: Quant"></label>
             <label>Topic<select id="bookTopic"></select></label>
             <label style="flex:2;min-width:200px">Drive link<input id="bookUrl" type="url" required placeholder="https://drive.google.com/..."></label>
-            <button class="primary" type="submit">Add book</button>
+            <button class="primary" type="submit" id="bookBtn">Add book</button>
           </form>
+          <p class="muted" id="bookMsg" style="margin-bottom:0"></p>
         </div>
-        <div class="panel"><h2>Your books</h2><ul class="plain" id="bookList"></ul></div>
+        <div class="panel"><h2>Your books</h2><div id="bookList"></div></div>
       </section>
 
-      <section data-subview="ask" hidden>
-        <div class="panel">
-          <h2>Ask a CFA doubt</h2>
-          <div id="keyBox" class="row" style="margin-bottom:12px" hidden>
-            <label style="flex:1;min-width:200px">Your Gemini API key (saved privately to your account, once)<input id="gkey" type="password" autocomplete="off"></label>
-            <button class="primary" id="saveKey">Save key</button>
-          </div>
-          <textarea id="question" placeholder="e.g. Explain duration vs convexity with a simple example"></textarea>
-          <div class="row" style="margin-top:10px"><button class="primary" id="askBtn">Get explanation</button><span class="muted" id="askStatus"></span><button class="ghost" id="changeKey" hidden>Change API key</button></div>
-          <div class="answer" id="answer"></div>
-        </div>
-      </section>
+    </div>
+  </div>
+
+  <!-- TO DO -->
+  <div class="view" id="v-todo" hidden>
+    <div class="wrap" style="max-width:640px">
+      <div class="panel">
+        <form class="row" id="todoForm" style="flex-wrap:nowrap">
+          <input id="todoText" placeholder="Add a task" aria-label="New task" style="flex:1" autocomplete="off">
+          <button class="primary" type="submit">Add</button>
+        </form>
+        <ul class="todos" id="todoList" style="margin-top:12px"></ul>
+        <details id="doneBox" style="margin-top:10px"><summary class="muted" id="doneSum"></summary><ul class="todos" id="doneList"></ul></details>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROUGH -->
+  <div class="view" id="v-rough" hidden>
+    <div class="wrap" style="max-width:720px">
+      <div class="panel">
+        <textarea id="roughNew" placeholder="Jot anything down…" aria-label="New rough note"></textarea>
+        <div class="row" style="margin-top:8px"><button class="primary" id="roughAdd">Save note</button></div>
+      </div>
+      <div id="roughList"></div>
+    </div>
+  </div>
+
+  <!-- ASK AI -->
+  <div class="view" id="v-ai" hidden>
+    <div class="wrap chat-wrap">
+      <div id="keyBox" class="panel row" hidden>
+        <label style="flex:1;min-width:200px">Your Gemini API key (saved privately to your account, once)<input id="gkey" type="password" autocomplete="off"></label>
+        <button class="primary" id="saveKey">Save key</button>
+      </div>
+      <div class="chat" id="chat">
+        <div class="msg ai">Hi! I can see your CFA progress, study log, books, medicines, to-dos, rough notes and recent Dot summaries. Ask me anything, like "What should I study this week?" or "Quiz me on last week's Dot stories."</div>
+      </div>
+      <form class="chat-in" id="chatForm">
+        <textarea id="chatText" rows="1" placeholder="Message" aria-label="Message"></textarea>
+        <button class="primary" type="submit" id="chatSend">Send</button>
+      </form>
+      <div class="row" style="justify-content:space-between"><span class="muted" id="chatStatus"></span><span><button class="ghost" id="chatClear">New chat</button><button class="ghost" id="changeKey" hidden>Change API key</button></span></div>
     </div>
   </div>
 
@@ -278,6 +348,7 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" style="vertical-align:-3px;margin-right:6px"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Calendar</button>
         </div>
         <ul class="meds" id="medList"></ul>
+        <p class="muted" style="margin-bottom:0">Took something on an earlier day? Open the Calendar, tap that day and tick it.</p>
       </div>
       <div class="panel">
         <h2>Last 14 days</h2>
@@ -317,7 +388,7 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, doc, collection, setDoc, addDoc, deleteDoc, onSnapshot, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, doc, collection, setDoc, addDoc, deleteDoc, updateDoc, onSnapshot, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyA_y9S85hCgrLf8lfRUaJDyvOstwboq9AQ",
@@ -366,6 +437,8 @@ onAuthStateChanged(auth, user => {
   show(last);
   startCfa(user.uid);
   startMeds(user.uid);
+  startTodo(user.uid);
+  startRough(user.uid);
 });
 
 /* ================= Dot Notes ================= */
@@ -444,7 +517,7 @@ function startCfa(u) {
   uid = u;
   unsubs.push(onSnapshot(cfaDoc(), s => { cfa = { examDate: "", weeklyTarget: 15, progress: {}, ...(s.data() || {}) }; renderCfa(); }));
   unsubs.push(onSnapshot(query(collection(fs, "users", uid, "sessions"), orderBy("date", "desc"), limit(500)), q => { sessions = q.docs.map(d => ({ id: d.id, ...d.data() })); renderSessions(); }));
-  unsubs.push(onSnapshot(query(collection(fs, "users", uid, "books"), orderBy("createdAt", "desc")), q => { books = q.docs.map(d => ({ id: d.id, ...d.data() })); renderBooks(); }));
+  unsubs.push(onSnapshot(query(collection(fs, "users", uid, "books"), orderBy("createdAt", "desc")), q => { books = q.docs.map(d => ({ id: d.id, ...d.data() })); renderBooks(); renderCfa(); }));
   unsubs.push(onSnapshot(privDoc(), s => { geminiKey = (s.data() || {}).geminiKey || ""; $("keyBox").hidden = !!geminiKey; $("changeKey").hidden = !geminiKey; }));
 }
 
@@ -474,9 +547,12 @@ function renderCfa() {
     tin.onchange = () => { const t = Math.max(0, parseInt(tin.value) || 0); put(Math.min(p.done, t), t); };
     $("topicList").appendChild(row);
   }
+  const chKeys = books.flatMap(b => bookChapters(b).map(k => !!(b.done || {})[k]));
+  let unit = "readings";
+  if (chKeys.length) { done = chKeys.filter(Boolean).length; total = chKeys.length; unit = "chapters"; }
   const pct = total ? Math.round(done / total * 100) : 0;
   $("ovPct").textContent = pct + "%"; $("ovBar").style.width = pct + "%";
-  $("ovTxt").textContent = total ? `${done} of ${total} readings done` : "Set reading counts in the Topics tab.";
+  $("ovTxt").textContent = total ? `${done} of ${total} ${unit} done` : "Add your books, or set reading counts in the Topics tab.";
   renderSessions();
 }
 
@@ -502,17 +578,103 @@ function renderSessions() {
   }
 }
 
+function bookChapters(b) {
+  const out = [];
+  (b.structure || []).forEach((s, i) => (s.chapters || []).forEach((c, j) => out.push(`${i}_${j}`)));
+  return out;
+}
 function renderBooks() {
-  const ul = $("bookList"); ul.innerHTML = "";
-  if (!books.length) { ul.innerHTML = `<li class="muted">No books yet. Add your first Drive link above.</li>`; return; }
+  const box = $("bookList"); box.innerHTML = "";
+  if (!books.length) { box.innerHTML = `<p class="muted" style="margin:0">No books yet. Add your first Drive link above.</p>`; return; }
   const order = Object.fromEntries(TOPICS.map((t, i) => [t[0], i]));
   for (const b of [...books].sort((a, c) => (order[a.topic] ?? 99) - (order[c.topic] ?? 99))) {
-    const li = document.createElement("li");
-    li.innerHTML = `<div><a target="_blank" rel="noopener"></a> <span class="tag"></span></div><button class="ghost">Remove</button>`;
-    const a = li.querySelector("a"); a.href = b.url; a.textContent = b.name;
-    li.querySelector(".tag").textContent = tName(b.topic);
-    li.querySelector("button").onclick = () => confirm(`Remove "${b.name}" from this list? The file stays in your Drive.`) && deleteDoc(doc(fs, "users", uid, "books", b.id));
-    ul.appendChild(li);
+    const keys = bookChapters(b), done = b.done || {};
+    const nDone = keys.filter(k => done[k]).length;
+    const div = document.createElement("div"); div.className = "book";
+    div.innerHTML = `<div class="book-head"><div><a target="_blank" rel="noopener"></a> <span class="tag"></span></div>
+      <span class="muted prog"></span></div><div class="bar-p"><i></i></div><div class="tree"></div>
+      <div class="row" style="margin-top:6px"><button class="ghost re">Re-read chapters</button><button class="ghost rm">Remove</button></div>`;
+    const a = div.querySelector("a"); a.href = b.url; a.textContent = b.name;
+    div.querySelector(".tag").textContent = tName(b.topic);
+    div.querySelector(".prog").textContent = keys.length ? `${nDone} of ${keys.length} chapters` : (b.status || "No chapter list yet");
+    div.querySelector(".bar-p i").style.width = (keys.length ? nDone / keys.length * 100 : 0) + "%";
+    const tree = div.querySelector(".tree");
+    (b.structure || []).forEach((s, i) => {
+      const det = document.createElement("details");
+      const sd = (s.chapters || []).filter((_, j) => done[`${i}_${j}`]).length;
+      det.innerHTML = `<summary></summary>`;
+      det.querySelector("summary").textContent = `${s.title}  (${sd}/${(s.chapters || []).length})`;
+      (s.chapters || []).forEach((c, j) => {
+        const k = `${i}_${j}`;
+        const l = document.createElement("label"); l.className = "chap";
+        const cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = !!done[k];
+        cb.onchange = () => updateDoc(doc(fs, "users", uid, "books", b.id), { ["done." + k]: cb.checked }).catch(console.error);
+        l.appendChild(cb); l.append(c.title);
+        det.appendChild(l);
+      });
+      tree.appendChild(det);
+    });
+    div.querySelector(".re").onclick = () => extractBook(b.id, b.url);
+    div.querySelector(".rm").onclick = () => confirm(`Remove "${b.name}" from this list? The file stays in your Drive.`) && deleteDoc(doc(fs, "users", uid, "books", b.id));
+    box.appendChild(div);
+  }
+}
+
+/* Read a Drive PDF and pull out its chapter list */
+function driveId(url) {
+  const m = url.match(/\/d\/([\w-]{20,})/) || url.match(/[?&]id=([\w-]{20,})/);
+  return m ? m[1] : null;
+}
+async function driveToken() {
+  const p = new GoogleAuthProvider();
+  p.addScope("https://www.googleapis.com/auth/drive.readonly");
+  p.setCustomParameters({ login_hint: auth.currentUser?.email || "" });
+  const res = await signInWithPopup(auth, p);
+  return GoogleAuthProvider.credentialFromResult(res)?.accessToken;
+}
+async function outlineToStructure(pdf) {
+  const ol = await pdf.getOutline();
+  if (!ol || !ol.length) return null;
+  const tidy = t => (t || "").replace(/\s+/g, " ").trim();
+  const withKids = ol.filter(n => n.items && n.items.length);
+  if (!withKids.length) return [{ title: "Chapters", chapters: ol.map(n => ({ title: tidy(n.title) })) }];
+  return ol.filter(n => n.items && n.items.length).map(n => ({ title: tidy(n.title), chapters: n.items.map(c => ({ title: tidy(c.title) })) }));
+}
+async function aiStructure(pdf) {
+  if (!geminiKey) return null;
+  let text = "";
+  for (let i = 1; i <= Math.min(14, pdf.numPages); i++) {
+    const pg = await pdf.getPage(i);
+    text += "\n" + (await pg.getTextContent()).items.map(t => t.str).join(" ");
+  }
+  const prompt = `Below is text from the first pages of a CFA study book, including its table of contents. Return ONLY JSON in this shape: [{"title": "subject or topic name", "chapters": [{"title": "reading or chapter name"}]}]. Use the book's own names and order. Leave out the cover, contents, index, formula sheets and practice exams.\n\n${text.slice(0, 40000)}`;
+  const out = await gemini([{ role: "user", parts: [{ text: prompt }] }], true);
+  try { return JSON.parse(out.replace(/```json|```/g, "").trim()); } catch (e) { return null; }
+}
+async function extractBook(bookId, url) {
+  const ref = doc(fs, "users", uid, "books", bookId);
+  const msg = t => { $("bookMsg").textContent = t; updateDoc(ref, { status: t }).catch(() => {}); };
+  const id = driveId(url);
+  if (!id) { msg("Couldn't read that Drive link. Copy it again from Drive's Share menu."); return; }
+  try {
+    msg("Asking Google for permission to read the file…");
+    const token = await driveToken();
+    if (!token) throw new Error("no token");
+    msg("Downloading the book from Drive (large books take a minute)…");
+    const r = await fetch(`https://www.googleapis.com/drive/v3/files/${id}?alt=media&supportsAllDrives=true`, { headers: { Authorization: "Bearer " + token } });
+    if (!r.ok) throw new Error(r.status === 404 ? "File not found. Is it in the Drive of the account you signed in with?" : r.status === 403 ? "Drive refused access. Make sure the Google Drive API is turned on (see setup steps)." : "Drive error " + r.status);
+    const buf = await r.arrayBuffer();
+    msg("Reading chapters…");
+    const lib = window["pdfjs-dist/build/pdf"];
+    lib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+    const pdf = await lib.getDocument({ data: buf }).promise;
+    let structure = await outlineToStructure(pdf);
+    if (!structure) { msg("No bookmarks in this PDF. Asking AI to read the contents pages…"); structure = await aiStructure(pdf); }
+    if (!structure || !structure.length) { msg(geminiKey ? "Couldn't find a chapter list in this PDF." : "This PDF has no bookmarks. Save your Gemini key in Ask AI, then tap Re-read chapters."); return; }
+    await updateDoc(ref, { structure, status: "" });
+    $("bookMsg").textContent = `Found ${structure.reduce((a, s) => a + s.chapters.length, 0)} chapters.`;
+  } catch (e) {
+    msg(e.code === "auth/popup-closed-by-user" ? "Permission window was closed. Tap Re-read chapters to try again." : (e.message || "Something went wrong reading the book."));
   }
 }
 
@@ -529,7 +691,8 @@ $("bookForm").onsubmit = e => {
   e.preventDefault();
   const url = $("bookUrl").value.trim();
   if (!/^https:\/\/(drive|docs)\.google\.com\//.test(url)) { alert("Paste a Google Drive link (it starts with https://drive.google.com)."); return; }
-  addDoc(collection(fs, "users", uid, "books"), { name: $("bookName").value.trim(), topic: $("bookTopic").value, url, createdAt: Date.now() }).catch(console.error);
+  addDoc(collection(fs, "users", uid, "books"), { name: $("bookName").value.trim(), topic: $("bookTopic").value, url, createdAt: Date.now(), done: {} })
+    .then(ref => extractBook(ref.id, url)).catch(console.error);
   $("bookName").value = ""; $("bookUrl").value = "";
 };
 
@@ -555,10 +718,11 @@ function startMeds(u) {
 }
 
 function takenOn(date, id) { return !!(medLog[date] && medLog[date].taken && medLog[date].taken[id]); }
-function weeklyDoneDate(id) {
-  const ws = mondayOf();
-  return Object.keys(medLog).filter(d => d >= ws && takenOn(d, id)).sort()[0] || null;
+function lastTaken(id) {
+  return Object.keys(medLog).filter(d => takenOn(d, id)).sort().pop() || null;
 }
+const daysBetween = (a, b) => Math.round((new Date(b + "T00:00:00") - new Date(a + "T00:00:00")) / 86400000);
+const prettyDay = ds => new Date(ds + "T00:00:00").toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short" });
 function setTaken(date, id, val) {
   const taken = { ...((medLog[date] || {}).taken || {}) };
   if (val) taken[id] = true; else delete taken[id];
@@ -574,9 +738,16 @@ function renderMeds() {
   for (const m of meds) {
     let done, sub, date;
     if (m.freq === "weekly") {
-      date = weeklyDoneDate(m.id);
-      done = !!date;
-      sub = done ? `Taken this week on ${new Date(date + "T00:00:00").toLocaleDateString("en-IN", { weekday: "long" })}` : "Once a week · not taken yet this week";
+      const lt = lastTaken(m.id);
+      const gap = lt ? daysBetween(lt, today) : null;
+      done = lt !== null && gap < 7;
+      date = lt;
+      if (!lt) sub = "Once a week · not taken yet";
+      else {
+        const due = new Date(lt + "T00:00:00"); due.setDate(due.getDate() + 7);
+        const dueTxt = due.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short" });
+        sub = done ? `Last taken ${prettyDay(lt)} · next due ${dueTxt}` : `Due since ${dueTxt}`;
+      }
     } else {
       date = today; done = takenOn(today, m.id);
       sub = done ? "Taken today" : "Every day";
@@ -676,30 +847,138 @@ $("calDlg").addEventListener("click", e => { if (e.target === $("calDlg")) $("ca
 $("calPrev").onclick = () => { calMonth.setMonth(calMonth.getMonth() - 1); calSel = null; renderCal(); };
 $("calNext").onclick = () => { calMonth.setMonth(calMonth.getMonth() + 1); calSel = null; renderCal(); };
 
-/* Ask a doubt (Gemini) */
-$("saveKey").onclick = () => { const k = $("gkey").value.trim(); if (k) setDoc(privDoc(), { geminiKey: k }).then(() => $("gkey").value = ""); };
-$("changeKey").onclick = () => { $("keyBox").hidden = false; };
-$("askBtn").onclick = async () => {
-  const q = $("question").value.trim(); if (!q) return;
-  if (!geminiKey) { $("askStatus").textContent = "Save your Gemini API key first."; $("keyBox").hidden = false; return; }
-  $("askBtn").disabled = true; $("askStatus").textContent = "Thinking…"; $("answer").textContent = "";
-  const prompt = "You are a patient CFA Level I tutor. Explain the student's question in plain English, with one short worked example or numbers where useful, and end with one line on how it's typically tested. Keep it under 250 words. Plain text only, no markdown symbols.\n\nQuestion: " + q;
-  let ok = false;
+/* ================= To Do ================= */
+let todos = [];
+function startTodo(u) {
+  unsubs.push(onSnapshot(query(collection(fs, "users", u, "todos"), orderBy("createdAt", "desc"), limit(300)), q => {
+    todos = q.docs.map(d => ({ id: d.id, ...d.data() })); renderTodos();
+  }));
+}
+function todoRow(t) {
+  const li = document.createElement("li");
+  li.innerHTML = `<input type="checkbox"><span class="t"></span><button class="ghost">Delete</button>`;
+  const cb = li.querySelector("input"); cb.checked = !!t.done; cb.setAttribute("aria-label", "Done: " + t.text);
+  li.querySelector(".t").textContent = t.text;
+  cb.onchange = () => updateDoc(doc(fs, "users", uid, "todos", t.id), { done: cb.checked, doneAt: cb.checked ? Date.now() : null });
+  li.querySelector("button").onclick = () => deleteDoc(doc(fs, "users", uid, "todos", t.id));
+  return li;
+}
+function renderTodos() {
+  const open = todos.filter(t => !t.done), done = todos.filter(t => t.done);
+  $("todoList").innerHTML = ""; $("doneList").innerHTML = "";
+  if (!open.length) $("todoList").innerHTML = `<li class="muted">Nothing pending.</li>`;
+  open.forEach(t => $("todoList").appendChild(todoRow(t)));
+  done.forEach(t => $("doneList").appendChild(todoRow(t)));
+  $("doneBox").hidden = !done.length;
+  $("doneSum").textContent = `Completed (${done.length})`;
+}
+$("todoForm").onsubmit = e => {
+  e.preventDefault();
+  const text = $("todoText").value.trim(); if (!text) return;
+  $("todoText").value = "";
+  addDoc(collection(fs, "users", uid, "todos"), { text, done: false, createdAt: Date.now() });
+};
+
+/* ================= Rough ================= */
+let roughs = [];
+function startRough(u) {
+  unsubs.push(onSnapshot(query(collection(fs, "users", u, "rough"), orderBy("updatedAt", "desc"), limit(300)), q => {
+    roughs = q.docs.map(d => ({ id: d.id, ...d.data() })); renderRough();
+  }));
+}
+function renderRough() {
+  const box = $("roughList");
+  const editing = document.activeElement && box.contains(document.activeElement);
+  if (editing) return;                       // don't redraw under the cursor
+  box.innerHTML = "";
+  if (!roughs.length) { box.innerHTML = `<p class="muted">No rough notes yet.</p>`; return; }
+  for (const n of roughs) {
+    const d = document.createElement("div"); d.className = "rnote";
+    d.innerHTML = `<textarea aria-label="Rough note"></textarea><div class="meta"><span></span><button class="ghost">Delete</button></div>`;
+    const ta = d.querySelector("textarea"); ta.value = n.text;
+    d.querySelector("span").textContent = new Date(n.updatedAt).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
+    const grow = () => { ta.style.height = "auto"; ta.style.height = ta.scrollHeight + "px"; };
+    ta.oninput = grow; setTimeout(grow);
+    ta.onblur = () => { if (ta.value !== n.text) updateDoc(doc(fs, "users", uid, "rough", n.id), { text: ta.value, updatedAt: Date.now() }); };
+    d.querySelector("button").onclick = () => confirm("Delete this note?") && deleteDoc(doc(fs, "users", uid, "rough", n.id));
+    box.appendChild(d);
+  }
+}
+$("roughAdd").onclick = () => {
+  const text = $("roughNew").value.trim(); if (!text) return;
+  $("roughNew").value = "";
+  addDoc(collection(fs, "users", uid, "rough"), { text, createdAt: Date.now(), updatedAt: Date.now() });
+};
+
+/* ================= Gemini + Ask AI ================= */
+async function gemini(contents, json = false, system = "") {
   for (const model of ["gemini-3.5-flash", "gemini-3.5-flash-lite"]) {
     try {
+      const body = { contents };
+      if (system) body.systemInstruction = { parts: [{ text: system }] };
+      if (json) body.generationConfig = { responseMimeType: "application/json" };
       const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-        method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": geminiKey },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+        method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": geminiKey }, body: JSON.stringify(body)
       });
       if (!r.ok) continue;
       const data = await r.json();
-      $("answer").textContent = (data.candidates?.[0]?.content?.parts || []).map(p => p.text || "").join("").trim();
-      ok = true; break;
+      return (data.candidates?.[0]?.content?.parts || []).map(p => p.text || "").join("").trim();
     } catch (e) {}
   }
-  $("askStatus").textContent = ok ? "" : "Couldn't get an answer. Check your API key, or wait a minute if you've asked a lot.";
-  $("askBtn").disabled = false;
+  throw new Error("gemini_failed");
+}
+function hubContext() {
+  const today = dstr(new Date());
+  const lines = [`Today is ${prettyDay(today)}.`];
+  lines.push(`CFA Level I exam: ${cfa.examDate || "February 2027 (exact date not set)"}. Weekly study target: ${cfa.weeklyTarget || 15} hours.`);
+  const tp = TOPICS.map(([k, n, w]) => { const p = cfa.progress[k]; return p && p.total ? `${n} ${p.done}/${p.total} (weight ${w})` : `${n} (weight ${w})`; });
+  lines.push("Topic progress (readings done/total): " + tp.join("; "));
+  for (const b of books) {
+    const done = b.done || {};
+    const chs = (b.structure || []).flatMap((s, i) => (s.chapters || []).map((c, j) => `${done[`${i}_${j}`] ? "[x]" : "[ ]"} ${s.title} > ${c.title}`));
+    lines.push(`Book "${b.name}" (${tName(b.topic)}):` + (chs.length ? "\n  " + chs.join("\n  ") : " no chapter list"));
+  }
+  lines.push("Recent study sessions: " + (sessions.slice(0, 15).map(s => `${s.date} ${s.hours}h ${tName(s.topic)}${s.note ? " (" + s.note + ")" : ""}`).join("; ") || "none"));
+  lines.push("Medicines: " + meds.map(m => {
+    const lt = lastTaken(m.id);
+    return `${m.name} (${m.freq}), last taken ${lt || "never"}${m.freq === "daily" ? ", taken today: " + (takenOn(today, m.id) ? "yes" : "no") : ""}`;
+  }).join("; "));
+  lines.push("Open to-dos: " + (todos.filter(t => !t.done).map(t => t.text).join("; ") || "none"));
+  lines.push("Rough notes:\n" + (roughs.slice(0, 20).map(r => "- " + r.text.slice(0, 500)).join("\n") || "none"));
+  lines.push("Recent Dot news summaries:\n" + (notes.slice(0, 7).map(n => `## ${n.date}: ${n.title}\n${n.body.slice(0, 1500)}`).join("\n\n") || "none"));
+  return lines.join("\n");
+}
+let chatTurns = [];
+function addMsg(who, text) {
+  const d = document.createElement("div"); d.className = "msg " + who;
+  if (who === "ai" && window.marked) d.innerHTML = marked.parse(text); else d.textContent = text;
+  $("chat").appendChild(d); d.scrollIntoView({ block: "end", behavior: "smooth" });
+  return d;
+}
+$("chatForm").onsubmit = async e => {
+  e.preventDefault();
+  const q = $("chatText").value.trim(); if (!q) return;
+  if (!geminiKey) { $("keyBox").hidden = false; $("chatStatus").textContent = "Save your Gemini API key first."; return; }
+  $("chatText").value = ""; addMsg("me", q);
+  chatTurns.push({ role: "user", parts: [{ text: q }] });
+  $("chatSend").disabled = true; $("chatStatus").textContent = "Thinking…";
+  const system = "You are the personal assistant inside Mahendra's hub website. He is an MBA student preparing for CFA Level I. " +
+    "Use the data below to give specific, personalised answers. Be concise and practical. If asked for a quiz, ask one question at a time. " +
+    "Don't give medical advice beyond what's in his list; suggest a doctor for health questions.\n\n=== HUB DATA ===\n" + hubContext();
+  try {
+    const a = await gemini(chatTurns, false, system);
+    chatTurns.push({ role: "model", parts: [{ text: a }] });
+    addMsg("ai", a); $("chatStatus").textContent = "";
+  } catch (err) {
+    chatTurns.pop();
+    $("chatStatus").textContent = "Couldn't get an answer. Check your API key, or wait a minute if you've asked a lot.";
+  }
+  $("chatSend").disabled = false;
 };
+$("chatText").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey && innerWidth > 800) { e.preventDefault(); $("chatForm").requestSubmit(); } });
+$("chatClear").onclick = () => { chatTurns = []; $("chat").innerHTML = ""; addMsg("ai", "New chat started. What would you like to know?"); };
+$("saveKey").onclick = () => { const k = $("gkey").value.trim(); if (k) setDoc(privDoc(), { geminiKey: k }).then(() => $("gkey").value = ""); };
+$("changeKey").onclick = () => { $("keyBox").hidden = false; };
 </script>
 </body>
 </html>
