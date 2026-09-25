@@ -162,6 +162,13 @@
   .chap { display: flex; gap: 10px; align-items: flex-start; padding: 5px 0 5px 18px; font-size: .93rem; cursor: pointer; font-weight: 400; color: var(--ink); flex-direction: row; }
   .chap input { width: 18px; height: 18px; accent-color: var(--ink); flex: none; margin-top: 2px; }
 
+  /* Reminders */
+  .bell { background: none; border: 1px solid transparent; color: var(--muted); border-radius: 999px; padding: 5px 8px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; font: inherit; font-size: .78rem; white-space: nowrap; }
+  .bell:hover { border-color: var(--line); }
+  .bell.on { color: var(--ink); background: var(--mark-soft); font-weight: 700; }
+  dialog#remDlg { border: 1px solid var(--line); border-radius: 16px; background: var(--panel); color: var(--ink); padding: 20px; width: min(420px, calc(100vw - 24px)); }
+  dialog#remDlg::backdrop { background: rgba(10, 18, 30, .45); }
+
   /* Calendar */
   dialog#calDlg { border: 1px solid var(--line); border-radius: 16px; background: var(--panel); color: var(--ink); padding: 18px; width: min(460px, calc(100vw - 24px)); max-height: calc(100% - 24px); overflow: auto; }
   dialog#calDlg::backdrop { background: rgba(10, 18, 30, .45); }
@@ -366,6 +373,22 @@
     </div>
   </div>
 </main>
+
+<dialog id="remDlg" aria-label="Set a reminder">
+  <h2 id="remTitle" style="margin:0 0 4px"></h2>
+  <p class="muted" id="remWhat" style="margin:0 0 14px"></p>
+  <div class="row" id="remOnce"><label style="flex:1">Date and time<input type="datetime-local" id="remAt"></label></div>
+  <div class="row" id="remRepeat" hidden>
+    <label>Time<input type="time" id="remTime" value="09:00"></label>
+    <label id="remDayWrap">Day<select id="remDay"><option value="1">Monday</option><option value="2">Tuesday</option><option value="3">Wednesday</option><option value="4">Thursday</option><option value="5">Friday</option><option value="6">Saturday</option><option value="0">Sunday</option></select></label>
+  </div>
+  <p class="muted" id="remMsg" style="min-height:1.2em"></p>
+  <div class="row">
+    <button class="primary" id="remSave">Set reminder</button>
+    <button class="ghost" id="remDel" hidden>Remove reminder</button>
+    <button class="ghost" id="remCancel" style="margin-left:auto">Cancel</button>
+  </div>
+</dialog>
 
 <dialog id="calDlg" aria-label="Medicine calendar">
   <div class="cal-head">
@@ -753,7 +776,12 @@ function renderMeds() {
       sub = done ? "Taken today" : "Every day";
     }
     const li = document.createElement("li");
-    li.innerHTML = `<button class="tick" aria-pressed="${done}"></button><div style="flex:1"><div class="med-name"></div><div class="med-sub"></div></div><button class="ghost">Remove</button>`;
+    li.innerHTML = `<button class="tick" aria-pressed="${done}"></button><div style="flex:1"><div class="med-name"></div><div class="med-sub"></div></div><button class="bell"></button><button class="ghost">Remove</button>`;
+    const bell = li.querySelector(".bell");
+    bell.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>` + (m.remindTime ? `<span></span>` : "");
+    if (m.remindTime) { bell.classList.add("on"); bell.querySelector("span").textContent = (m.freq === "weekly" ? ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][m.remindDay ?? 0] + " " : "") + m.remindTime; }
+    bell.setAttribute("aria-label", m.remindTime ? "Change reminder" : "Set a repeating reminder");
+    bell.onclick = () => openReminder({ kind: "med", item: m });
     const tick = li.querySelector(".tick");
     tick.textContent = done ? "✓" : "";
     tick.setAttribute("aria-label", (done ? "Undo " : "Mark taken: ") + m.name);
@@ -762,6 +790,7 @@ function renderMeds() {
     tick.onclick = () => done ? setTaken(date, m.id, false) : setTaken(today, m.id, true);
     li.querySelector(".ghost").onclick = () => {
       if (!confirm(`Remove ${m.name} from your list?`)) return;
+      if (m.eventId) deleteEvent(m.eventId).catch(() => {});
       setDoc(medsDoc(), { list: meds.filter(x => x.id !== m.id) }).catch(console.error);
     };
     ul.appendChild(li);
@@ -847,6 +876,110 @@ $("calDlg").addEventListener("click", e => { if (e.target === $("calDlg")) $("ca
 $("calPrev").onclick = () => { calMonth.setMonth(calMonth.getMonth() - 1); calSel = null; renderCal(); };
 $("calNext").onclick = () => { calMonth.setMonth(calMonth.getMonth() + 1); calSel = null; renderCal(); };
 
+/* ================= Reminders (via Google Calendar) ================= */
+let calTok = null;   // {token, exp}
+async function calendarToken() {
+  if (calTok && calTok.exp > Date.now()) return calTok.token;
+  const p = new GoogleAuthProvider();
+  p.addScope("https://www.googleapis.com/auth/calendar.events");
+  p.setCustomParameters({ login_hint: auth.currentUser?.email || "" });
+  const res = await signInWithPopup(auth, p);
+  const token = GoogleAuthProvider.credentialFromResult(res)?.accessToken;
+  calTok = { token, exp: Date.now() + 50 * 60 * 1000 };
+  return token;
+}
+async function calApi(method, path, body) {
+  const token = await calendarToken();
+  const r = await fetch("https://www.googleapis.com/calendar/v3/calendars/primary/events" + path, {
+    method, headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined
+  });
+  if (r.status === 401) { calTok = null; throw new Error("Sign-in expired. Try again."); }
+  if (r.status === 403) throw new Error("Google Calendar refused. Make sure the Google Calendar API is turned on (see setup steps).");
+  if (!r.ok && !(method === "DELETE" && (r.status === 404 || r.status === 410))) throw new Error("Calendar error " + r.status);
+  return method === "DELETE" ? null : r.json();
+}
+const TZ = Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Kolkata";
+function localIso(d) { const p = n => String(n).padStart(2, "0"); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}:00`; }
+async function createEvent(summary, start, rrule) {
+  const end = new Date(start.getTime() + 15 * 60000);
+  const ev = await calApi("POST", "", {
+    summary: "⏰ " + summary, description: "Reminder from My Hub",
+    start: { dateTime: localIso(start), timeZone: TZ }, end: { dateTime: localIso(end), timeZone: TZ },
+    reminders: { useDefault: false, overrides: [{ method: "popup", minutes: 0 }] },
+    ...(rrule ? { recurrence: [rrule] } : {})
+  });
+  return ev.id;
+}
+const deleteEvent = id => calApi("DELETE", "/" + encodeURIComponent(id));
+
+let remCtx = null;
+function openReminder(ctx) {
+  remCtx = ctx;
+  const { kind, item } = ctx;
+  $("remMsg").textContent = "";
+  $("remSave").disabled = false;
+  if (kind === "todo") {
+    $("remTitle").textContent = "Remind me";
+    $("remWhat").textContent = item.text;
+    $("remOnce").hidden = false; $("remRepeat").hidden = true;
+    const d = item.remindAt && item.remindAt > Date.now() ? new Date(item.remindAt) : (() => { const x = new Date(); x.setHours(x.getHours() + 1, 0, 0, 0); return x; })();
+    $("remAt").value = localIso(d).slice(0, 16);
+    $("remDel").hidden = !(item.remindAt && item.remindAt > Date.now());
+  } else {
+    $("remTitle").textContent = item.freq === "weekly" ? "Remind me every week" : "Remind me every day";
+    $("remWhat").textContent = item.name;
+    $("remOnce").hidden = true; $("remRepeat").hidden = false;
+    $("remDayWrap").hidden = item.freq !== "weekly";
+    $("remTime").value = item.remindTime || "09:00";
+    let day = item.remindDay;
+    if (day == null) { const lt = lastTaken(item.id); day = lt ? new Date(lt + "T00:00:00").getDay() : 0; }
+    $("remDay").value = String(day);
+    $("remDel").hidden = !item.remindTime;
+  }
+  $("remDlg").showModal();
+}
+$("remCancel").onclick = () => $("remDlg").close();
+$("remSave").onclick = async () => {
+  const { kind, item } = remCtx;
+  $("remSave").disabled = true; $("remMsg").textContent = "Adding to your Google Calendar…";
+  try {
+    if (item.eventId) await deleteEvent(item.eventId).catch(() => {});
+    if (kind === "todo") {
+      const at = new Date($("remAt").value);
+      if (isNaN(at) || at <= new Date()) throw new Error("Pick a date and time in the future.");
+      const eventId = await createEvent(item.text, at);
+      await updateDoc(doc(fs, "users", uid, "todos", item.id), { remindAt: at.getTime(), eventId });
+    } else {
+      const [hh, mm] = $("remTime").value.split(":").map(Number);
+      const start = new Date(); start.setHours(hh, mm, 0, 0);
+      let rrule = "RRULE:FREQ=DAILY", remindDay = null;
+      if (item.freq === "weekly") {
+        remindDay = parseInt($("remDay").value);
+        start.setDate(start.getDate() + ((remindDay - start.getDay() + 7) % 7));
+        rrule = "RRULE:FREQ=WEEKLY";
+      }
+      if (start <= new Date()) start.setDate(start.getDate() + (item.freq === "weekly" ? 7 : 1));
+      const eventId = await createEvent(`Take ${item.name}`, start, rrule);
+      const list = meds.map(x => x.id === item.id ? { ...x, remindTime: $("remTime").value, remindDay, eventId } : x);
+      await setDoc(medsDoc(), { list });
+    }
+    $("remDlg").close();
+  } catch (e) {
+    $("remMsg").textContent = e.code === "auth/popup-closed-by-user" ? "Permission window was closed. Try again." : (e.message || "Couldn't set the reminder.");
+    $("remSave").disabled = false;
+  }
+};
+$("remDel").onclick = async () => {
+  const { kind, item } = remCtx;
+  $("remMsg").textContent = "Removing…";
+  try {
+    if (item.eventId) await deleteEvent(item.eventId);
+    if (kind === "todo") await updateDoc(doc(fs, "users", uid, "todos", item.id), { remindAt: null, eventId: null });
+    else await setDoc(medsDoc(), { list: meds.map(x => x.id === item.id ? { ...x, remindTime: null, remindDay: null, eventId: null } : x) });
+    $("remDlg").close();
+  } catch (e) { $("remMsg").textContent = e.message || "Couldn't remove the reminder."; }
+};
+
 /* ================= To Do ================= */
 let todos = [];
 function startTodo(u) {
@@ -856,11 +989,20 @@ function startTodo(u) {
 }
 function todoRow(t) {
   const li = document.createElement("li");
-  li.innerHTML = `<input type="checkbox"><span class="t"></span><button class="ghost">Delete</button>`;
+  li.innerHTML = `<input type="checkbox"><span class="t"></span><button class="bell"></button><button class="ghost del">Delete</button>`;
   const cb = li.querySelector("input"); cb.checked = !!t.done; cb.setAttribute("aria-label", "Done: " + t.text);
   li.querySelector(".t").textContent = t.text;
-  cb.onchange = () => updateDoc(doc(fs, "users", uid, "todos", t.id), { done: cb.checked, doneAt: cb.checked ? Date.now() : null });
-  li.querySelector("button").onclick = () => deleteDoc(doc(fs, "users", uid, "todos", t.id));
+  const bell = li.querySelector(".bell");
+  const future = t.remindAt && t.remindAt > Date.now();
+  bell.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>` + (future ? `<span></span>` : "");
+  if (future) { bell.classList.add("on"); bell.querySelector("span").textContent = new Date(t.remindAt).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }); }
+  bell.setAttribute("aria-label", future ? "Change reminder" : "Set reminder");
+  bell.hidden = !!t.done;
+  bell.onclick = () => openReminder({ kind: "todo", item: t });
+  cb.onchange = () => {
+    updateDoc(doc(fs, "users", uid, "todos", t.id), { done: cb.checked, doneAt: cb.checked ? Date.now() : null });
+  };
+  li.querySelector(".del").onclick = () => { if (t.eventId) deleteEvent(t.eventId).catch(() => {}); deleteDoc(doc(fs, "users", uid, "todos", t.id)); };
   return li;
 }
 function renderTodos() {
