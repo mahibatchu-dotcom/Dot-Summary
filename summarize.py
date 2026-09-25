@@ -83,7 +83,7 @@ def summarise(text, url):
             "parts": [{"text": f"{instructions}\n\nSOURCE URL: {url}\n\nPAGE TEXT:\n{text[:60000]}"}]
         }]
     }
-    models = [m for m in [os.environ.get("GEMINI_MODEL"), "gemini-2.5-flash", "gemini-2.5-flash-lite"] if m]
+    models = [m for m in [os.environ.get("GEMINI_MODEL"), "gemini-3.5-flash", "gemini-3.5-flash-lite"] if m]
 
     for model in models:
         for attempt in range(3):
