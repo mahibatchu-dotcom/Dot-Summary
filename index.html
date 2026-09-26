@@ -11,7 +11,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%231B2A41'/><circle cx='50' cy='50' r='18' fill='%23FFD84D'/></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=Noto+Serif+Devanagari:wght@400;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf_viewer.min.css">
@@ -202,6 +202,36 @@
   dialog#newDlg { border: 1px solid var(--line); border-radius: 16px; background: var(--panel); color: var(--ink); padding: 20px; width: min(640px, calc(100vw - 24px)); max-height: calc(100% - 24px); overflow: auto; }
   dialog#newDlg::backdrop { background: rgba(10, 18, 30, .45); }
 
+  /* Gita */
+  .sloka { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 22px; margin-bottom: 16px; }
+  .sloka .ref { font-size: .8rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+  .sa { font-family: "Noto Serif Devanagari", var(--read); font-size: clamp(1.25rem, 3.2vw, 1.6rem); line-height: 1.8; margin: 12px 0 8px; white-space: pre-line; }
+  .tr { font-family: var(--read); font-style: italic; color: var(--muted); white-space: pre-line; line-height: 1.6; }
+  .passage { font-family: var(--read); font-size: 1.1rem; line-height: 1.75; margin: 12px 0; border-left: 4px solid var(--mark); padding-left: 14px; }
+  .ai h4 { font-size: .8rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 18px 0 6px; }
+  .ai p, .ai li { font-family: var(--read); font-size: 1.04rem; line-height: 1.65; }
+  .ai ul { padding-left: 1.2em; margin: 0; }
+  .wm { display: flex; flex-wrap: wrap; gap: 6px; }
+  .wm span { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 4px 8px; font-size: .88rem; }
+  .wm b { font-family: var(--read); font-style: italic; }
+  .sloka-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+
+  /* Hindi */
+  .hi { font-family: "Noto Serif Devanagari", var(--read); }
+  .card-big { text-align: center; padding: 26px 10px; }
+  .card-big .hi { font-size: 2.4rem; line-height: 1.4; }
+  .card-big .tl { color: var(--muted); font-style: italic; margin-top: 4px; }
+  .card-big .en { font-size: 1.2rem; font-weight: 700; margin-top: 14px; }
+  .vocab { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; margin: 12px 0; }
+  .vocab .v { border: 1px solid var(--line); border-radius: 12px; padding: 12px; background: var(--bg); }
+  .vocab .v .hi { font-size: 1.5rem; }
+  .vocab .v .tl { font-style: italic; color: var(--muted); font-size: .9rem; }
+  .speak { font: inherit; font-size: .8rem; border: 0; background: none; cursor: pointer; color: var(--muted); padding: 2px 4px; }
+  .qopt { display: block; width: 100%; text-align: left; font: inherit; padding: 10px 12px; margin: 6px 0; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); cursor: pointer; }
+  .qopt.right { background: #D8F3DC; border-color: #2E7D5B; color: #1B2A41; }
+  .qopt.wrong { background: #FDE2E1; border-color: var(--bad); color: #1B2A41; }
+  #hChat { max-height: 50vh; overflow-y: auto; margin-bottom: 8px; }
+
   /* Calendar */
   dialog#calDlg { border: 1px solid var(--line); border-radius: 16px; background: var(--panel); color: var(--ink); padding: 18px; width: min(460px, calc(100vw - 24px)); max-height: calc(100% - 24px); overflow: auto; }
   dialog#calDlg::backdrop { background: rgba(10, 18, 30, .45); }
@@ -249,6 +279,8 @@
     <button data-view="meds" aria-current="false">Medicines</button>
     <button data-view="todo" aria-current="false">To Do</button>
     <button data-view="rough" aria-current="false">Rough</button>
+    <button data-view="gita" aria-current="false">Gita</button>
+    <button data-view="hindi" aria-current="false">Hindi</button>
     <button data-view="ai" aria-current="false">Ask AI</button>
   </nav>
   <div class="who" id="who" hidden><span id="whoName"></span><button id="signOut">Sign out</button></div>
@@ -358,6 +390,74 @@
         <div class="row" style="margin-top:8px"><button class="primary" id="roughAdd">Save note</button></div>
       </div>
       <div id="roughList"></div>
+    </div>
+  </div>
+
+  <!-- GITA -->
+  <div class="view" id="v-gita" hidden>
+    <div class="wrap" style="max-width:760px">
+      <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:14px">
+        <div class="subtabs" style="margin:0">
+          <button class="pill" data-gt="bg" aria-selected="true">Bhagavad Gita</button>
+          <button class="pill" data-gt="anu" aria-selected="false">Anu Gita</button>
+          <button class="pill" data-gt="saved" aria-selected="false">★ Saved</button>
+        </div>
+        <label style="flex-direction:row;align-items:center;gap:6px">Per day
+          <select id="gPerDay"><option value="1">1</option><option value="2">2</option></select></label>
+      </div>
+      <div class="panel" id="gHead">
+        <div class="row" style="justify-content:space-between;align-items:center">
+          <div><div class="muted" id="gProgress"></div><div class="big" style="font-size:1.1rem" id="gToday"></div></div>
+          <div class="row">
+            <select id="gCh" aria-label="Chapter"></select>
+            <select id="gV" aria-label="Verse or passage"></select>
+            <button class="ghost" id="gBack" hidden>Back to today</button>
+          </div>
+        </div>
+      </div>
+      <div id="gCards"></div>
+      <div class="row" id="gDoneRow" style="justify-content:space-between;align-items:center">
+        <button class="primary" id="gDone">Done for today → next</button>
+        <span class="muted" id="gStreak"></span>
+        <button class="bell" id="gBell"></button>
+      </div>
+      <p class="muted" id="gSource" style="font-size:.78rem;margin-top:18px"></p>
+    </div>
+  </div>
+
+  <!-- HINDI -->
+  <div class="view" id="v-hindi" hidden>
+    <div class="wrap" style="max-width:760px">
+      <div class="stats" style="margin-bottom:16px">
+        <div class="panel" style="margin:0"><h2>Today</h2><div class="big" id="hTimer">10:00</div>
+          <div class="row" style="margin-top:8px"><button class="pill" id="hTimerBtn">Start 10 minutes</button><button class="bell" id="hBell"></button></div></div>
+        <div class="panel" style="margin:0"><h2>Progress</h2>
+          <div><b id="hStreak">0</b> <span class="muted">day streak</span></div>
+          <div><b id="hWords">0</b> <span class="muted">words learned</span></div>
+          <div><b id="hLessonNo">1</b> <span class="muted">lesson</span></div></div>
+      </div>
+      <div class="subtabs">
+        <button class="pill" data-ht="review" aria-selected="true">1 · Review</button>
+        <button class="pill" data-ht="lesson" aria-selected="false">2 · Lesson</button>
+        <button class="pill" data-ht="quiz" aria-selected="false">3 · Quiz</button>
+        <button class="pill" data-ht="talk" aria-selected="false">Practice talking</button>
+      </div>
+      <section data-hview="review" class="panel">
+        <div id="hReview"></div>
+      </section>
+      <section data-hview="lesson" class="panel" hidden>
+        <div id="hLesson"></div>
+      </section>
+      <section data-hview="quiz" class="panel" hidden>
+        <div id="hQuiz"></div>
+      </section>
+      <section data-hview="talk" class="panel" hidden>
+        <p class="muted" style="margin-top:0">Chat in simple Hindi. The tutor replies at your level and corrects mistakes gently. You can type in Hindi, in English letters (e.g. "mera naam Mahendra hai"), or ask in English.</p>
+        <div class="chat" id="hChat"></div>
+        <form class="chat-in" id="hChatForm"><textarea id="hChatText" rows="1" placeholder="Type here" aria-label="Message"></textarea><button class="primary" type="submit" id="hChatSend">Send</button></form>
+        <span class="muted" id="hChatStatus"></span>
+      </section>
+      <p class="muted" style="font-size:.78rem">Lessons are written by AI following a fixed course plan, so an occasional small mistake is possible.</p>
     </div>
   </div>
 
@@ -493,7 +593,7 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, doc, collection, setDoc, addDoc, deleteDoc, updateDoc, onSnapshot, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, doc, collection, setDoc, addDoc, deleteDoc, updateDoc, getDoc, onSnapshot, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyA_y9S85hCgrLf8lfRUaJDyvOstwboq9AQ",
@@ -543,6 +643,8 @@ onAuthStateChanged(auth, user => {
   startCfa(user.uid);
   startMeds(user.uid);
   startTodo(user.uid);
+  startGita(user.uid);
+  startHindi(user.uid);
   startRough(user.uid);
 });
 
@@ -1062,10 +1164,17 @@ async function openBook(b, page, label) {
   }
 }
 
+let vLastRange = null;
+document.addEventListener("selectionchange", () => {
+  const s = window.getSelection();
+  if (s && !s.isCollapsed && s.rangeCount && $("vPages").contains(s.anchorNode)) vLastRange = s.getRangeAt(0).cloneRange();
+});
+$("vBody").addEventListener("scroll", () => { if (window.getSelection().isCollapsed) vLastRange = null; }, { passive: true });
 function vApplyMark(type, color) {
   const sel = window.getSelection();
-  if (!sel || sel.isCollapsed || !sel.rangeCount) { $("vMsg").textContent = "Select some text first (on phone: long-press, then drag)."; return; }
-  const rects = [...sel.getRangeAt(0).getClientRects()].filter(r => r.width > 1 && r.height > 1);
+  let range = sel && !sel.isCollapsed && sel.rangeCount ? sel.getRangeAt(0) : vLastRange;
+  if (!range || range.collapsed) { $("vMsg").textContent = "Select some text first (on phone: long-press, then drag the handles)."; return; }
+  const rects = [...range.getClientRects()].filter(r => r.width > 1 && r.height > 1);
   const byPage = {};
   for (const r of rects) {
     const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
@@ -1080,11 +1189,14 @@ function vApplyMark(type, color) {
   if (!pages.length) { $("vMsg").textContent = "Select text on the page itself."; return; }
   for (const n of pages) addDoc(collection(fs, "users", uid, "books", vBook.id, "marks"), { page: +n, type, color, rects: byPage[n], createdAt: Date.now() })
     .catch(e => { console.error(e); $("vMsg").textContent = "Couldn't save that mark. Try again."; });
-  sel.removeAllRanges();
-  $("vMsg").textContent = "";
+  sel && sel.removeAllRanges(); vLastRange = null;
+  $("vMsg").textContent = "Saved.";
+  setTimeout(() => { if ($("vMsg").textContent === "Saved.") $("vMsg").textContent = ""; }, 1500);
 }
 document.querySelectorAll(".v-tools .tool[data-mark]").forEach(b => {
   b.addEventListener("pointerdown", e => e.preventDefault());   // keep the text selection
+  b.addEventListener("mousedown", e => e.preventDefault());
+  b.addEventListener("touchstart", e => { e.preventDefault(); b.click(); }, { passive: false });
   b.onclick = () => vApplyMark(b.dataset.mark, b.dataset.color);
 });
 $("vErase").onclick = () => {
@@ -1277,6 +1389,8 @@ $("calDlg").addEventListener("click", e => { if (e.target === $("calDlg")) $("ca
 $("calPrev").onclick = () => { calMonth.setMonth(calMonth.getMonth() - 1); calSel = null; renderCal(); };
 $("calNext").onclick = () => { calMonth.setMonth(calMonth.getMonth() + 1); calSel = null; renderCal(); };
 
+const BELL_SVG = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>';
+
 /* ================= Reminders (via Google Calendar) ================= */
 let calTok = null;   // {token, exp}
 async function calendarToken() {
@@ -1360,9 +1474,12 @@ $("remSave").onclick = async () => {
         rrule = "RRULE:FREQ=WEEKLY";
       }
       if (start <= new Date()) start.setDate(start.getDate() + (item.freq === "weekly" ? 7 : 1));
-      const eventId = await createEvent(`Take ${item.name}`, start, rrule);
-      const list = meds.map(x => x.id === item.id ? { ...x, remindTime: $("remTime").value, remindDay, eventId } : x);
-      await setDoc(medsDoc(), { list });
+      const eventId = await createEvent(remCtx.eventTitle || `Take ${item.name}`, start, rrule);
+      if (remCtx.save) await remCtx.save({ remindTime: $("remTime").value, eventId });
+      else {
+        const list = meds.map(x => x.id === item.id ? { ...x, remindTime: $("remTime").value, remindDay, eventId } : x);
+        await setDoc(medsDoc(), { list });
+      }
     }
     $("remDlg").close();
   } catch (e) {
@@ -1376,6 +1493,7 @@ $("remDel").onclick = async () => {
   try {
     if (item.eventId) await deleteEvent(item.eventId);
     if (kind === "todo") await updateDoc(doc(fs, "users", uid, "todos", item.id), { remindAt: null, eventId: null });
+    else if (remCtx.save) await remCtx.save({ remindTime: null, eventId: null });
     else await setDoc(medsDoc(), { list: meds.map(x => x.id === item.id ? { ...x, remindTime: null, remindDay: null, eventId: null } : x) });
     $("remDlg").close();
   } catch (e) { $("remMsg").textContent = e.message || "Couldn't remove the reminder."; }
@@ -1453,6 +1571,382 @@ $("roughAdd").onclick = () => {
   addDoc(collection(fs, "users", uid, "rough"), { text, createdAt: Date.now(), updatedAt: Date.now() });
 };
 
+/* ================= Gita ================= */
+const GITA = { bg: null, anu: null };
+let gState = { bg: 0, anu: 0, perDay: 1, days: [] }, gTab = "bg", gView = null, gSaved = [], gNotes = {};
+const gDoc = () => doc(fs, "users", uid, "meta", "gita");
+function gitaRefs(k) {
+  const d = GITA[k]; if (!d) return [];
+  const out = [];
+  d.chapters.forEach(c => (k === "bg" ? c.verses : c.passages).forEach((x, i) => out.push({ ch: c.n, i: k === "bg" ? x.v : i + 1, idx: out.length })));
+  return out;
+}
+async function loadGitaData(k) {
+  if (GITA[k]) return GITA[k];
+  const r = await fetch(`data/${k === "bg" ? "bhagavad-gita" : "anugita"}.json`);
+  if (!r.ok) throw new Error(k === "anu" ? "The Anu Gita text hasn't been added yet. Run the 'Build Anu Gita data' workflow on GitHub once." : "Couldn't load the Gita text.");
+  GITA[k] = await r.json();
+  return GITA[k];
+}
+function startGita(u) {
+  unsubs.push(onSnapshot(gDoc(), s => { gState = { bg: 0, anu: 0, perDay: 1, days: [], ...(s.data() || {}) }; renderGita(); }));
+  unsubs.push(onSnapshot(query(collection(fs, "users", u, "gitaSaved"), orderBy("createdAt", "desc")), q => {
+    gSaved = q.docs.map(d => ({ id: d.id, ...d.data() })); if (gTab === "saved") renderGita(); else renderGitaCards();
+  }));
+}
+document.querySelectorAll("[data-gt]").forEach(b => b.onclick = () => {
+  gTab = b.dataset.gt; gView = null;
+  document.querySelectorAll("[data-gt]").forEach(x => x.setAttribute("aria-selected", x === b));
+  renderGita();
+});
+$("gPerDay").onchange = e => setDoc(gDoc(), { perDay: +e.target.value }, { merge: true });
+$("gBack").onclick = () => { gView = null; renderGita(); };
+
+function gItem(k, idx) {
+  const d = GITA[k], refs = gitaRefs(k), r = refs[idx]; if (!r) return null;
+  const c = d.chapters.find(c => c.n === r.ch);
+  if (k === "bg") { const v = c.verses.find(v => v.v === r.i); return { k, idx, ch: r.ch, n: r.i, chName: c.translit, chMeaning: c.meaning, sa: v.sa, tr: v.tr, key: `bg_${r.ch}_${r.i}` }; }
+  return { k, idx, ch: r.ch, n: r.i, adhyaya: c.adhyaya, text: c.passages[r.i - 1], key: `anu_${r.ch}_${r.i}` };
+}
+
+async function renderGita() {
+  $("gPerDay").value = String(gState.perDay || 1);
+  const streak = gitaStreak();
+  $("gStreak").textContent = streak ? `🔥 ${streak} day streak` : "";
+  gitaBell();
+  if (gTab === "saved") {
+    $("gHead").hidden = true; $("gDoneRow").hidden = true; $("gSource").textContent = "";
+    const box = $("gCards"); box.innerHTML = "";
+    if (!gSaved.length) { box.innerHTML = `<div class="panel muted">Nothing saved yet. Tap ☆ Save on any sloka.</div>`; return; }
+    for (const s of gSaved) {
+      const k = s.key.startsWith("bg") ? "bg" : "anu";
+      try { await loadGitaData(k); } catch (e) { continue; }
+      const refs = gitaRefs(k), [, ch, n] = s.key.split("_").map(Number);
+      const r = refs.find(r => r.ch === ch && r.i === n);
+      if (r) box.appendChild(gitaCard(gItem(k, r.idx)));
+    }
+    return;
+  }
+  $("gHead").hidden = false; $("gDoneRow").hidden = false;
+  try { await loadGitaData(gTab); } catch (e) { $("gCards").innerHTML = `<div class="panel">${e.message}</div>`; $("gDoneRow").hidden = true; return; }
+  const d = GITA[gTab], refs = gitaRefs(gTab);
+  $("gSource").textContent = gTab === "bg" ? "Sanskrit text: gita/gita open dataset. Translations and explanations are written by AI." : d.source + " Explanations are written by AI.";
+  const pos = Math.min(gState[gTab] || 0, refs.length - 1);
+  const cur = gView != null ? gView : pos;
+  const r = refs[cur];
+  $("gProgress").textContent = `${gTab === "bg" ? "Sloka" : "Passage"} ${pos + 1} of ${refs.length} · ${Math.round(pos / refs.length * 100)}% complete`;
+  $("gToday").textContent = gView != null ? "Browsing" : "Today's reading";
+  $("gBack").hidden = gView == null; $("gDone").hidden = gView != null;
+  // chapter / verse pickers
+  $("gCh").innerHTML = d.chapters.map(c => `<option value="${c.n}">Ch ${c.n}${c.translit ? " · " + c.translit : ""}</option>`).join("");
+  $("gCh").value = r.ch;
+  const inCh = refs.filter(x => x.ch === r.ch);
+  $("gV").innerHTML = inCh.map(x => `<option value="${x.idx}">${gTab === "bg" ? "Verse" : "Passage"} ${x.i}</option>`).join("");
+  $("gV").value = r.idx;
+  $("gCh").onchange = () => { gView = refs.find(x => x.ch === +$("gCh").value).idx; renderGita(); };
+  $("gV").onchange = () => { gView = +$("gV").value; renderGita(); };
+  renderGitaCards();
+}
+function renderGitaCards() {
+  if (gTab === "saved" || !GITA[gTab]) return;
+  const refs = gitaRefs(gTab);
+  const start = gView != null ? gView : Math.min(gState[gTab] || 0, refs.length - 1);
+  const count = gView != null ? 1 : (gState.perDay || 1);
+  const box = $("gCards"); box.innerHTML = "";
+  for (let i = start; i < Math.min(start + count, refs.length); i++) box.appendChild(gitaCard(gItem(gTab, i)));
+}
+function gitaCard(it) {
+  const card = document.createElement("article"); card.className = "sloka";
+  const saved = gSaved.find(s => s.key === it.key);
+  if (it.k === "bg") {
+    card.innerHTML = `<div class="ref"></div><div class="sa"></div><div class="tr"></div>`;
+    card.querySelector(".ref").textContent = `Bhagavad Gita ${it.ch}.${it.n} · ${it.chName} (${it.chMeaning})`;
+    card.querySelector(".sa").textContent = it.sa;
+    card.querySelector(".tr").textContent = it.tr;
+  } else {
+    card.innerHTML = `<div class="ref"></div><div class="passage"></div>`;
+    card.querySelector(".ref").textContent = `Anu Gita ${it.ch}.${it.n} · Mahabharata, Ashvamedhika Parva, adhyaya ${it.adhyaya}`;
+    card.querySelector(".passage").textContent = it.text;
+  }
+  const ai = document.createElement("div"); ai.className = "ai"; card.appendChild(ai);
+  const act = document.createElement("div"); act.className = "sloka-actions";
+  act.innerHTML = `<button class="pill sv"></button>${it.k === "bg" ? `<button class="pill ls">🔊 Listen</button>` : ""}<button class="pill ask">Ask AI about this</button><button class="ghost rg">Regenerate explanation</button>`;
+  act.querySelector(".sv").textContent = saved ? "★ Saved" : "☆ Save";
+  act.querySelector(".sv").onclick = () => saved ? deleteDoc(doc(fs, "users", uid, "gitaSaved", saved.id)) : addDoc(collection(fs, "users", uid, "gitaSaved"), { key: it.key, createdAt: Date.now() });
+  if (it.k === "bg") act.querySelector(".ls").onclick = () => speak(it.sa.replace(/[॥।]/g, " "), "hi-IN", 0.8);
+  act.querySelector(".ask").onclick = () => {
+    show("ai");
+    $("chatText").value = it.k === "bg" ? `About Bhagavad Gita ${it.ch}.${it.n}: ` : `About this Anu Gita passage (${it.ch}.${it.n}): "${it.text.slice(0, 200)}…" `;
+    $("chatText").focus();
+  };
+  act.querySelector(".rg").onclick = () => explainGita(it, ai, true);
+  card.appendChild(act);
+  explainGita(it, ai, false);
+  return card;
+}
+async function explainGita(it, box, fresh) {
+  const ref = doc(fs, "users", uid, "gitaNotes", it.key);
+  if (!fresh && gNotes[it.key]) return drawGita(box, gNotes[it.key], it.k);
+  box.innerHTML = `<p class="muted">Preparing the explanation…</p>`;
+  if (!fresh) {
+    try { const s = await getDoc(ref); if (s.exists()) { gNotes[it.key] = s.data(); return drawGita(box, s.data(), it.k); } } catch (e) {}
+  }
+  if (!geminiKey) { box.innerHTML = `<p class="muted">Save your Gemini key in the Ask AI tab to see the meaning and explanation.</p>`; return; }
+  const who = "The reader is Mahendra, an MBA student preparing for CFA Level I, who wants practical wisdom for daily life.";
+  const prompt = it.k === "bg"
+    ? `Bhagavad Gita chapter ${it.ch}, verse ${it.n}.\nSanskrit:\n${it.sa}\nTransliteration:\n${it.tr}\n\n${who}\nReturn ONLY JSON: {"words":[{"w":"transliterated word","m":"meaning"}],"translation":"your own faithful English translation","explanation":"80-130 words: what is being said, by whom, and why, in the context of the chapter","real_life":["3 concrete, specific examples of applying this today (work, studies, relationships, stress)"],"key_idea":"one short line to remember"}. Keep words to the important ones (max 12). Be faithful to the traditional meaning; don't invent.`
+    : `A passage from the Anu Gita (Mahabharata, Ashvamedhika Parva, adhyaya ${it.adhyaya}), in K. T. Telang's 1882 English translation:\n"${it.text}"\n\n${who}\nReturn ONLY JSON: {"simple":"the passage retold in 2-4 plain modern English sentences","explanation":"80-130 words on the teaching and its context (who is speaking and why)","real_life":["3 concrete, specific examples of applying this today"],"key_idea":"one short line to remember"}. Be faithful to the text; don't invent.`;
+  try {
+    const out = await gemini([{ role: "user", parts: [{ text: prompt }] }], true);
+    const data = JSON.parse(out.replace(/```json|```/g, "").trim());
+    gNotes[it.key] = data;
+    setDoc(ref, data).catch(() => {});
+    drawGita(box, data, it.k);
+  } catch (e) { box.innerHTML = `<p class="muted">Couldn't prepare the explanation. Tap "Regenerate explanation" to try again.</p>`; }
+}
+function drawGita(box, d, k) {
+  const esc = s => String(s || "").replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+  let html = "";
+  if (k === "bg" && d.words?.length) html += `<h4>Word meanings</h4><div class="wm">${d.words.map(w => `<span><b>${esc(w.w)}</b> · ${esc(w.m)}</span>`).join("")}</div>`;
+  if (d.translation) html += `<h4>Translation</h4><p>${esc(d.translation)}</p>`;
+  if (d.simple) html += `<h4>In simple words</h4><p>${esc(d.simple)}</p>`;
+  if (d.explanation) html += `<h4>Explanation</h4><p>${esc(d.explanation)}</p>`;
+  if (d.real_life?.length) html += `<h4>In real life</h4><ul>${d.real_life.map(x => `<li>${esc(x)}</li>`).join("")}</ul>`;
+  if (d.key_idea) html += `<h4>Remember</h4><p><strong>${esc(d.key_idea)}</strong></p>`;
+  box.innerHTML = html;
+}
+function gitaStreak() {
+  const days = new Set(gState.days || []); let n = 0; const d = new Date();
+  if (!days.has(dstr(d))) d.setDate(d.getDate() - 1);
+  while (days.has(dstr(d))) { n++; d.setDate(d.getDate() - 1); }
+  return n;
+}
+$("gDone").onclick = () => {
+  const refs = gitaRefs(gTab);
+  const next = Math.min((gState[gTab] || 0) + (gState.perDay || 1), refs.length - 1);
+  const days = [...new Set([...(gState.days || []), dstr(new Date())])].slice(-400);
+  setDoc(gDoc(), { [gTab]: next, days }, { merge: true });
+  window.scrollTo({ top: 0 });
+};
+function gitaBell() {
+  const b = $("gBell");
+  b.innerHTML = BELL_SVG + (gState.remindTime ? `<span>${gState.remindTime}</span>` : "");
+  b.classList.toggle("on", !!gState.remindTime);
+  b.setAttribute("aria-label", "Daily Gita reminder");
+  b.onclick = () => openReminder({ kind: "daily", item: { name: "Gita reading", freq: "daily", remindTime: gState.remindTime, eventId: gState.eventId },
+    eventTitle: "Gita: today's sloka", save: f => setDoc(gDoc(), f, { merge: true }) });
+}
+
+/* ================= Speech ================= */
+function speak(text, lang = "hi-IN", rate = 0.9) {
+  if (!("speechSynthesis" in window)) return alert("Your browser can't read text aloud.");
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = lang; u.rate = rate;
+  const v = speechSynthesis.getVoices().find(v => v.lang === lang) || speechSynthesis.getVoices().find(v => v.lang.startsWith(lang.slice(0, 2)));
+  if (v) u.voice = v;
+  speechSynthesis.speak(u);
+}
+
+/* ================= Hindi ================= */
+const HINDI_COURSE = [
+  ["Vowels 1: अ आ इ ई उ ऊ", "Introduce the first six Hindi vowels as standalone letters, with their sounds and one simple example word each."],
+  ["Vowels 2: ए ऐ ओ औ ऋ अं अः", "Introduce the remaining vowels plus anusvara and visarga, with sounds and example words."],
+  ["Consonants: क ख ग घ ङ", "The ka-varga consonants; explain aspirated vs unaspirated sounds simply."],
+  ["Consonants: च छ ज झ ञ", "The cha-varga consonants with example words."],
+  ["Consonants: ट ठ ड ढ ण", "The retroflex consonants; explain the tongue position simply; example words."],
+  ["Consonants: त थ द ध न", "The dental consonants and how they differ from ट ठ ड ढ; example words."],
+  ["Consonants: प फ ब भ म", "The labial consonants with example words."],
+  ["Consonants: य र ल व श ष स ह", "The remaining consonants with example words."],
+  ["Vowel signs 1: ा ि ी ु ू", "How vowels attach to consonants as matras; practise with क and other letters; simple words."],
+  ["Vowel signs 2: े ै ो ौ ं ँ", "The remaining matras including bindu and chandrabindu; simple words."],
+  ["Half letters and joined letters", "Conjuncts like क्ष त्र ज्ञ श्र and half letters (e.g. प्यार, स्कूल); reading practice."],
+  ["Reading practice: everyday signs", "Read common words seen on signs and menus (e.g. दुकान, बाज़ार, खाना), including nukta letters ज़ फ़ ड़."],
+  ["Greetings and introducing yourself", "नमस्ते, आप कैसे हैं, मेरा नाम ... है, and polite replies."],
+  ["I, you, he, she: pronouns", "मैं, तुम, आप, वह, हम, वे and when to use tum vs aap."],
+  ["To be: है, हैं, हूँ", "Simple sentences with the verb 'to be'."],
+  ["Numbers 1 to 20", "Hindi numbers one to twenty with practice."],
+  ["Family", "Family words (माँ, पिताजी, भाई, बहन...) and sentences about your family."],
+  ["Masculine and feminine nouns", "How gender works for nouns, with common patterns (-आ / -ई)."],
+  ["Describing things: adjectives", "Common adjectives and how they change with gender and number (अच्छा/अच्छी/अच्छे)."],
+  ["Possession: का, की, के", "Using का/की/के and possessive pronouns मेरा, तुम्हारा, आपका."],
+  ["Where things are: में, पर, से, को", "Common postpositions with example sentences."],
+  ["Food and ordering", "Food words and ordering at a restaurant or dhaba."],
+  ["Daily routine: present tense", "Habitual present (मैं काम करता हूँ / करती हूँ) with daily-routine verbs."],
+  ["What are you doing now?", "Present continuous (मैं पढ़ रहा हूँ)."],
+  ["Talking about yesterday: past tense", "Simple past (मैंने खाना खाया, मैं गया) including the ने rule, kept simple."],
+  ["Plans: future tense", "Future tense (मैं जाऊँगा / जाऊँगी) with plans."],
+  ["Asking questions", "क्या, कौन, कहाँ, कब, क्यों, कैसे, कितना with examples."],
+  ["Directions and travel", "Asking and giving directions; auto, bus, train phrases."],
+  ["Shopping and prices", "Numbers 20-100 basics, prices, bargaining phrases."],
+  ["Time and days", "Days of the week, telling time, today/tomorrow/yesterday (कल has two meanings)."],
+  ["At college and work", "Useful phrases for classes, meetings and colleagues."],
+  ["Feelings and weather", "Expressing feelings and talking about weather."],
+  ["Polite requests", "Imperatives and polite forms (करो, कीजिए, कृपया)."],
+  ["Can, must, want", "सकना, चाहिए, चाहना with examples."],
+  ["Conversation: meeting someone new", "A full short dialogue using everything so far, with key phrases."],
+  ["Conversation: at a shop", "A short dialogue at a shop, with key phrases."],
+  ["Conversation: making plans with friends", "A short dialogue about weekend plans."],
+  ["Conversation: on the phone", "Phone phrases and a short dialogue."],
+  ["Conversation: at the doctor", "Health words and a short dialogue."],
+  ["Review: common mistakes", "Common beginner mistakes in gender, ने, and postpositions, with corrections."],
+];
+const H_BOXES = [0, 1, 3, 7, 14, 30, 60];
+let hState = { lesson: 0, days: [], quizDone: {} }, hWords = [], hLessonData = null, hTimerLeft = 600, hTimerRun = null;
+const hDoc = () => doc(fs, "users", uid, "meta", "hindi");
+function startHindi(u) {
+  unsubs.push(onSnapshot(hDoc(), s => { hState = { lesson: 0, days: [], quizDone: {}, ...(s.data() || {}) }; renderHindiTop(); if (!hLessonData || hLessonData.n !== hState.lesson) loadHindiLesson(); }));
+  unsubs.push(onSnapshot(collection(fs, "users", u, "hindiWords"), q => { hWords = q.docs.map(d => ({ id: d.id, ...d.data() })); renderHindiTop(); renderReview(); }));
+}
+document.querySelectorAll("[data-ht]").forEach(b => b.onclick = () => {
+  document.querySelectorAll("[data-ht]").forEach(x => x.setAttribute("aria-selected", x === b));
+  document.querySelectorAll("[data-hview]").forEach(s => s.hidden = s.dataset.hview !== b.dataset.ht);
+});
+function hStreak() {
+  const days = new Set(hState.days || []); let n = 0; const d = new Date();
+  if (!days.has(dstr(d))) d.setDate(d.getDate() - 1);
+  while (days.has(dstr(d))) { n++; d.setDate(d.getDate() - 1); }
+  return n;
+}
+function markHindiDay() { if (!(hState.days || []).includes(dstr(new Date()))) setDoc(hDoc(), { days: [...(hState.days || []), dstr(new Date())].slice(-400) }, { merge: true }); }
+function renderHindiTop() {
+  $("hStreak").textContent = hStreak();
+  $("hWords").textContent = hWords.filter(w => w.box >= 2).length;
+  $("hLessonNo").textContent = `${hState.lesson + 1} of ${HINDI_COURSE.length}+`;
+  const b = $("hBell");
+  b.innerHTML = BELL_SVG + (hState.remindTime ? `<span>${hState.remindTime}</span>` : "");
+  b.classList.toggle("on", !!hState.remindTime);
+  b.onclick = () => openReminder({ kind: "daily", item: { name: "Hindi practice", freq: "daily", remindTime: hState.remindTime, eventId: hState.eventId },
+    eventTitle: "Hindi: 10 minutes", save: f => setDoc(hDoc(), f, { merge: true }) });
+}
+$("hTimerBtn").onclick = () => {
+  if (hTimerRun) { clearInterval(hTimerRun); hTimerRun = null; $("hTimerBtn").textContent = "Resume"; return; }
+  if (hTimerLeft <= 0) hTimerLeft = 600;
+  $("hTimerBtn").textContent = "Pause";
+  hTimerRun = setInterval(() => {
+    hTimerLeft--;
+    $("hTimer").textContent = `${Math.floor(hTimerLeft / 60)}:${String(hTimerLeft % 60).padStart(2, "0")}`;
+    if (hTimerLeft <= 0) { clearInterval(hTimerRun); hTimerRun = null; $("hTimer").textContent = "Done! 🎉"; $("hTimerBtn").textContent = "Start again"; markHindiDay(); }
+  }, 1000);
+};
+
+/* Review: spaced repetition flashcards */
+let hRevQueue = [], hRevShow = false;
+function dueWords() { const t = dstr(new Date()); return hWords.filter(w => (w.due || "") <= t); }
+function renderReview() {
+  const box = $("hReview");
+  if (!hRevQueue.length) hRevQueue = dueWords().sort(() => Math.random() - .5).slice(0, 15);
+  if (!hWords.length) { box.innerHTML = `<p class="muted">No words to review yet. Start with today's lesson; its words will come back here for review.</p>`; return; }
+  if (!hRevQueue.length) { box.innerHTML = `<p><b>All reviews done for today.</b> Go to the Lesson tab next.</p>`; return; }
+  const w = hRevQueue[0];
+  box.innerHTML = `<div class="muted">${hRevQueue.length} to review</div><div class="card-big"><div class="hi"></div><div class="tl"></div><div class="en" ${hRevShow ? "" : "hidden"}></div></div>
+    <div class="row" style="justify-content:center"><button class="pill sp">🔊 Listen</button>${hRevShow ? `<button class="primary ok">I knew it</button><button class="pill no">I didn't</button>` : `<button class="primary show">Show meaning</button>`}</div>`;
+  box.querySelector(".hi").textContent = w.hi; box.querySelector(".tl").textContent = w.tl || ""; box.querySelector(".en").textContent = w.en;
+  box.querySelector(".sp").onclick = () => speak(w.hi);
+  if (!hRevShow) box.querySelector(".show").onclick = () => { hRevShow = true; renderReview(); };
+  else {
+    const grade = ok => {
+      const nb = ok ? Math.min((w.box || 1) + 1, H_BOXES.length - 1) : 1;
+      const d = new Date(); d.setDate(d.getDate() + (ok ? H_BOXES[nb] : 1));
+      updateDoc(doc(fs, "users", uid, "hindiWords", w.id), { box: nb, due: dstr(d) });
+      hRevQueue.shift(); hRevShow = false; markHindiDay(); renderReview();
+    };
+    box.querySelector(".ok").onclick = () => grade(true);
+    box.querySelector(".no").onclick = () => grade(false);
+  }
+}
+
+/* Lesson + quiz, generated once per lesson and cached */
+async function loadHindiLesson(fresh = false) {
+  const n = hState.lesson;
+  const [title, focus] = n < HINDI_COURSE.length ? HINDI_COURSE[n]
+    : ["Everyday conversation " + (n - HINDI_COURSE.length + 1), "A new everyday situation (pick one not covered before: bank, hostel, cricket, cooking, festivals, office, travel booking...), with a short dialogue and key phrases."];
+  const ref = doc(fs, "users", uid, "hindiLessons", "l" + n);
+  $("hLesson").innerHTML = `<p class="muted">Preparing lesson ${n + 1}: ${title}…</p>`; $("hQuiz").innerHTML = "";
+  if (!fresh) {
+    try { const s = await getDoc(ref); if (s.exists()) { hLessonData = { n, ...s.data() }; return drawLesson(); } } catch (e) {}
+  }
+  if (!geminiKey) { $("hLesson").innerHTML = `<p class="muted">Save your Gemini key in the Ask AI tab to get lessons.</p>`; return; }
+  const prompt = `You are a friendly Hindi teacher for an English-speaking adult beginner in India. Lesson ${n + 1}: "${title}". Focus: ${focus}
+Earlier lessons covered: ${HINDI_COURSE.slice(0, Math.min(n, HINDI_COURSE.length)).map(x => x[0]).join("; ") || "nothing yet"}.
+Return ONLY JSON:
+{"intro":"2-4 short sentences in English explaining today's point simply",
+ "items":[{"hi":"Devanagari","tl":"simple romanisation","en":"English meaning","note":"optional tip"}],
+ "tip":"one grammar or pronunciation tip",
+ "examples":[{"hi":"sentence in Devanagari","tl":"romanisation","en":"English"}],
+ "quiz":[{"q":"question in English (may include Hindi)","options":["a","b","c","d"],"answer":0}]}
+Rules: 5-8 items; 3 examples using only what has been taught; 5 quiz questions mixing reading, meaning and usage; answer is the index of the correct option. Use standard Hindi. Be accurate.`;
+  try {
+    const out = await gemini([{ role: "user", parts: [{ text: prompt }] }], true);
+    const data = { title, ...JSON.parse(out.replace(/```json|```/g, "").trim()) };
+    await setDoc(ref, data);
+    hLessonData = { n, ...data };
+    drawLesson();
+  } catch (e) { $("hLesson").innerHTML = `<p class="muted">Couldn't prepare the lesson. <button class="ghost" id="hRetry">Try again</button></p>`; $("hRetry").onclick = () => loadHindiLesson(true); }
+}
+function drawLesson() {
+  const L = hLessonData, esc = s => String(s || "").replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+  const box = $("hLesson");
+  box.innerHTML = `<div class="muted">Lesson ${L.n + 1}</div><h2 style="font-size:1.3rem">${esc(L.title)}</h2><p>${esc(L.intro)}</p>
+    <div class="vocab">${(L.items || []).map((w, i) => `<div class="v"><div class="hi">${esc(w.hi)}</div><div class="tl">${esc(w.tl)}</div><div>${esc(w.en)}</div>${w.note ? `<div class="muted" style="font-size:.8rem">${esc(w.note)}</div>` : ""}<button class="speak" data-i="${i}">🔊 Listen</button></div>`).join("")}</div>
+    ${L.tip ? `<p><strong>Tip:</strong> ${esc(L.tip)}</p>` : ""}
+    <h2 style="margin-top:18px">Examples</h2>
+    ${(L.examples || []).map((x, i) => `<p><span class="hi" style="font-size:1.2rem">${esc(x.hi)}</span> <button class="speak" data-e="${i}">🔊</button><br><i class="muted">${esc(x.tl)}</i><br>${esc(x.en)}</p>`).join("")}
+    <div class="row" style="margin-top:12px"><button class="primary" id="hToQuiz">Take the quiz →</button><button class="ghost" id="hRegen">Regenerate lesson</button></div>`;
+  box.querySelectorAll("[data-i]").forEach(b => b.onclick = () => speak(L.items[+b.dataset.i].hi));
+  box.querySelectorAll("[data-e]").forEach(b => b.onclick = () => speak(L.examples[+b.dataset.e].hi));
+  $("hToQuiz").onclick = () => document.querySelector('[data-ht="quiz"]').click();
+  $("hRegen").onclick = () => confirm("Replace this lesson with a new version?") && loadHindiLesson(true);
+  drawQuiz();
+}
+function drawQuiz() {
+  const L = hLessonData, box = $("hQuiz"), esc = s => String(s || "").replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+  let score = 0, answered = 0;
+  box.innerHTML = `<div class="muted">Lesson ${L.n + 1} quiz</div>`;
+  (L.quiz || []).forEach((q, qi) => {
+    const d = document.createElement("div"); d.style.marginBottom = "16px";
+    d.innerHTML = `<p style="font-weight:700;margin-bottom:4px"><span class="hi">${esc(q.q)}</span></p>` + q.options.map((o, i) => `<button class="qopt" data-o="${i}"><span class="hi">${esc(o)}</span></button>`).join("");
+    d.querySelectorAll(".qopt").forEach(b => b.onclick = () => {
+      if (d.dataset.done) return; d.dataset.done = 1; answered++;
+      const ok = +b.dataset.o === q.answer; if (ok) score++;
+      b.classList.add(ok ? "right" : "wrong");
+      d.querySelector(`[data-o="${q.answer}"]`).classList.add("right");
+      if (answered === L.quiz.length) finish();
+    });
+    box.appendChild(d);
+  });
+  const res = document.createElement("div"); box.appendChild(res);
+  function finish() {
+    res.innerHTML = `<p><b>You got ${score} of ${L.quiz.length}.</b> ${score >= L.quiz.length - 1 ? "Great work!" : "Good effort. Review the lesson once more if you like."}</p>
+      <button class="primary" id="hFinish">Finish lesson → add words to my review</button>`;
+    $("hFinish").onclick = async () => {
+      const have = new Set(hWords.map(w => w.hi));
+      const d = new Date(); d.setDate(d.getDate() + 1);
+      for (const w of L.items || []) if (!have.has(w.hi)) await addDoc(collection(fs, "users", uid, "hindiWords"), { hi: w.hi, tl: w.tl || "", en: w.en, box: 1, due: dstr(d), lesson: L.n });
+      markHindiDay();
+      await setDoc(hDoc(), { lesson: L.n + 1 }, { merge: true });
+      res.innerHTML = `<p><b>Lesson complete!</b> See you tomorrow for lesson ${L.n + 2}. Its words will appear in Review.</p>`;
+    };
+  }
+}
+
+/* Talking practice */
+let hTurns = [];
+function hMsg(who, text) { const d = document.createElement("div"); d.className = "msg " + who; if (who === "ai" && window.marked) d.innerHTML = marked.parse(text); else d.textContent = text; $("hChat").appendChild(d); $("hChat").scrollTop = 1e9; }
+$("hChatForm").onsubmit = async e => {
+  e.preventDefault();
+  const t = $("hChatText").value.trim(); if (!t) return;
+  if (!geminiKey) { $("hChatStatus").textContent = "Save your Gemini key in the Ask AI tab first."; return; }
+  $("hChatText").value = ""; hMsg("me", t); hTurns.push({ role: "user", parts: [{ text: t }] });
+  $("hChatSend").disabled = true; $("hChatStatus").textContent = "…";
+  const learned = HINDI_COURSE.slice(0, Math.max(1, hState.lesson)).map(x => x[0]).join("; ");
+  const sys = `You are a warm Hindi conversation tutor. The learner is a beginner who has done these lessons: ${learned}. Known words include: ${hWords.slice(0, 80).map(w => w.hi).join(", ") || "very few"}.
+Reply mostly in simple Hindi at their level. Always write Hindi in Devanagari, then romanisation in brackets, then a short English meaning. If they make a mistake, gently show the correct version first. Keep replies short (2-4 lines) and end with a simple question to keep them talking.`;
+  try { const a = await gemini(hTurns, false, sys); hTurns.push({ role: "model", parts: [{ text: a }] }); hMsg("ai", a); $("hChatStatus").textContent = ""; markHindiDay(); }
+  catch (err) { hTurns.pop(); $("hChatStatus").textContent = "Couldn't get a reply. Try again."; }
+  $("hChatSend").disabled = false;
+};
+
 /* ================= Gemini + Ask AI ================= */
 async function gemini(contents, json = false, system = "") {
   for (const model of ["gemini-3.5-flash", "gemini-3.5-flash-lite"]) {
@@ -1486,6 +1980,8 @@ function hubContext() {
     const lt = lastTaken(m.id);
     return `${m.name} (${m.freq}), last taken ${lt || "never"}${m.freq === "daily" ? ", taken today: " + (takenOn(today, m.id) ? "yes" : "no") : ""}`;
   }).join("; "));
+  lines.push(`Gita: Bhagavad Gita at sloka ${(gState.bg || 0) + 1}/701, Anu Gita at passage ${(gState.anu || 0) + 1}. Saved: ${gSaved.map(s => s.key).join(", ") || "none"}.`);
+  lines.push(`Hindi: on lesson ${hState.lesson + 1} (${(HINDI_COURSE[hState.lesson] || ["conversation"])[0]}), ${hWords.length} words in review, streak ${hStreak()} days.`);
   lines.push("Open to-dos: " + (todos.filter(t => !t.done).map(t => t.text).join("; ") || "none"));
   lines.push("Rough notes:\n" + (roughs.slice(0, 20).map(r => "- " + r.text.slice(0, 500)).join("\n") || "none"));
   lines.push("Recent Dot news summaries:\n" + (notes.slice(0, 7).map(n => `## ${n.date}: ${n.title}\n${n.body.slice(0, 1500)}`).join("\n\n") || "none"));

@@ -46,9 +46,24 @@ def fail(message):
 
 # ---------- 1. Find and read the article ----------
 
+def open_page(page, url, wait_for=None):
+    """Open a page without waiting for every background request to stop.
+    dot.news keeps some connections open, so 'networkidle' can time out."""
+    page.goto(url, wait_until="domcontentloaded", timeout=90000)
+    if wait_for:
+        try:
+            page.wait_for_selector(wait_for, timeout=30000)
+        except Exception:
+            pass
+    try:
+        page.wait_for_load_state("networkidle", timeout=10000)
+    except Exception:
+        pass                                   # fine: content is usually there by now
+    page.wait_for_timeout(2500)
+
+
 def load_text(page, url):
-    page.goto(url, wait_until="networkidle", timeout=90000)
-    page.wait_for_timeout(3000)
+    open_page(page, url, wait_for="p, article, h1")
     for _ in range(6):
         page.mouse.wheel(0, 4000)
         page.wait_for_timeout(700)
@@ -77,8 +92,7 @@ def date_label(date_str):
 
 
 def find_by_date(page, date_str):
-    page.goto(POSTS_URL, wait_until="networkidle", timeout=90000)
-    page.wait_for_timeout(2500)
+    open_page(page, POSTS_URL, wait_for='a[href*="/post/"]')
     label = date_label(date_str)
     for _ in range(25):                      # scroll to load older stories
         for href, text in post_links(page):
@@ -104,8 +118,7 @@ def get_article():
                 browser.close()
                 fail(f"No Dot story found for {ARTICLE_DATE}. Dot may not have published that day, or it is too far back.")
         else:
-            page.goto(POSTS_URL, wait_until="networkidle", timeout=90000)
-            page.wait_for_timeout(2500)
+            open_page(page, POSTS_URL, wait_for='a[href*="/post/"]')
             links = post_links(page)
             if not links:
                 browser.close()
@@ -191,4 +204,9 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except SystemExit:
+        raise
+    except Exception as e:                     # always tell the hub what went wrong
+        fail(f"Something went wrong while reading the article ({type(e).__name__}). Try again in a few minutes.")
