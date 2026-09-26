@@ -118,8 +118,13 @@ def get_article():
                 browser.close()
                 fail(f"No Dot story found for {ARTICLE_DATE}. Dot may not have published that day, or it is too far back.")
         else:
-            open_page(page, POSTS_URL, wait_for='a[href*="/post/"]')
-            links = post_links(page)
+            links = []
+            for attempt in range(3):                 # the page sometimes renders slowly
+                open_page(page, POSTS_URL, wait_for='a[href*="/post/"]')
+                links = post_links(page)
+                if links:
+                    break
+                page.wait_for_timeout(5000)
             if not links:
                 browser.close()
                 fail("Couldn't find any stories on dot.news/posts.")
@@ -195,7 +200,7 @@ def main():
     if result.startswith("NO_ARTICLE"):
         fail("Couldn't find an article on that page. Check the link.")
     first, _, rest = result.partition("\n")
-    title = first.replace("TITLE:", "").strip() or "Untitled"
+    title = re.sub(r"^\W*(line\s*1\s*:\s*)?(title\s*:\s*)?", "", first.strip(), flags=re.I).strip(" *#") or "Untitled"
     summary = rest.strip()
     if REQUEST_ID:
         save_pending(title, summary, url)

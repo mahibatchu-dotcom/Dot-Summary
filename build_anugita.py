@@ -1,7 +1,10 @@
 """
 One-time builder: downloads K. T. Telang's public-domain English translation of
 the Anugita (Sacred Books of the East, vol. 8, 1882) from sacred-texts.com and
-saves it as data/anugita.json, split into chapters and passages.
+saves it as data/anugita.json, split into chapters and readable passages.
+
+sacred-texts.com now embeds each chapter's text as an escaped HTML string
+(contentHtml:"...") inside the page, so we read that string directly.
 """
 import re
 import json
@@ -14,32 +17,59 @@ import requests
 BASE = "https://sacred-texts.com/hin/sbe08/sbe08{:02d}.htm"
 FIRST_PAGE, CHAPTERS = 28, 36          # Anugita chapters I-XXXVI are pages 28-63
 OUT = Path(__file__).parent / "data" / "anugita.json"
+TARGET = 700                            # aim for passages of roughly this many characters
+MAX = 1300
+
+
+def chapter_html(page):
+    m = re.search(r'contentHtml:"((?:[^"\\]|\\.)*)"', page)
+    if not m:
+        raise RuntimeError("Couldn't find the chapter text on the page (site layout may have changed).")
+    return json.loads('"' + m.group(1) + '"')
 
 
 def clean(fragment):
-    fragment = re.sub(r"<a[^>]*href=\"#fn_\d+\"[^>]*>.*?</a>", "", fragment, flags=re.S | re.I)   # footnote refs
-    fragment = re.sub(r"<font[^>]*color=\"?green\"?[^>]*>.*?</font>", "", fragment, flags=re.S | re.I)  # page numbers
-    fragment = re.sub(r"<a name=\"page_\d+\">.*?</a>", "", fragment, flags=re.S | re.I)
-    text = re.sub(r"<[^>]+>", " ", fragment)
+    fragment = re.sub(r'<a[^>]*href="[^"]*#fn_\d+"[^>]*>.*?</a>', "", fragment, flags=re.S)   # footnote numbers
+    fragment = re.sub(r"<a>\s*</a>", "", fragment)
+    text = re.sub(r"<[^>]+>", "", fragment)
     text = html.unescape(text)
     text = re.sub(r"\s+", " ", text).strip()
-    text = re.sub(r"\s+([,.;:!?])", r"\1", text)
-    return text
+    return re.sub(r"\s+([,.;:!?])", r"\1", text)
 
 
-def passages_from(page_html):
-    body = re.split(r"<h3[^>]*>\s*Footnotes\s*</h3>", page_html, flags=re.I)[0]
-    paras = re.findall(r"<p[^>]*>(.*?)(?=<p[^>]*>|</p>|<hr|<h\d|$)", body, flags=re.S | re.I)
+def paragraphs(body):
+    body = re.split(r"<hr", body, maxsplit=1)[0]                 # footnotes come after the rule
+    out = []
+    for raw in re.findall(r"<p[^>]*>(.*?)</p>", body, flags=re.S):
+        if re.fullmatch(r"\s*<a>\s*p\.\s*\d+\s*</a>\s*", raw):   # page-number markers
+            continue
+        t = clean(raw)
+        if not t or re.fullmatch(r"p\.\s*\d+", t):
+            continue
+        if out and not re.search(r"[.!?:;\"'’”)\]]$", out[-1]) and t[0].islower():
+            out[-1] += " " + t                                    # paragraph split by a page break
+        elif out and len(out[-1]) < 60 and out[-1].endswith(":"):
+            out[-1] += " " + t                                    # "X said:" joins what follows
+        else:
+            out.append(t)
+    return out
+
+
+def passages(paras):
     out = []
     for p in paras:
-        t = clean(p)
-        if len(t) < 60:
-            continue
-        if re.match(r"^(Next|Previous|Index|Sacred Texts)\b", t):
-            continue
-        if "sacred-texts.com" in t or "public domain" in t.lower():
-            continue
-        out.append(t)
+        if out and len(out[-1]) + len(p) < TARGET:
+            out[-1] += "\n\n" + p
+        elif len(p) > MAX:                                        # split very long paragraphs at sentences
+            buf = ""
+            for s in re.split(r"(?<=[.!?])\s+", p):
+                if buf and len(buf) + len(s) > TARGET:
+                    out.append(buf.strip()); buf = ""
+                buf += " " + s
+            if buf.strip():
+                out.append(buf.strip())
+        else:
+            out.append(p)
     return out
 
 
@@ -49,9 +79,10 @@ def main():
         url = BASE.format(FIRST_PAGE + i)
         r = requests.get(url, headers={"User-Agent": "Mozilla/5.0 (personal study app)"}, timeout=60)
         r.raise_for_status()
-        r.encoding = r.apparent_encoding or "utf-8"
-        ps = passages_from(r.text)
-        print(f"Chapter {i + 1}: {len(ps)} passages from {url}")
+        ps = passages(paragraphs(chapter_html(r.text)))
+        print(f"Chapter {i + 1}: {len(ps)} passages")
+        if not ps:
+            raise RuntimeError(f"No text found for chapter {i + 1}")
         chapters.append({"n": i + 1, "adhyaya": 16 + i, "passages": ps})
         time.sleep(1)
     OUT.parent.mkdir(exist_ok=True)
